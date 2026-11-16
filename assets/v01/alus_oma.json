@@ -1,0 +1,94 @@
+{
+  "leveys": 1600,
+  "korkeus": 700,
+  "sisalto_bbox": [
+    238,
+    0,
+    1361,
+    700
+  ],
+  "skaala_lahteesta": 0.988701,
+  "lattia_y": {
+    "yla": 366,
+    "ala": 544
+  },
+  "katto_y": {
+    "yla": 198,
+    "ala": 403
+  },
+  "huoneet": {
+    "reaktori": {
+      "x": [
+        438,
+        697
+      ],
+      "y": [
+        138,
+        366
+      ],
+      "lattia_y": 366,
+      "kansi": "yla"
+    },
+    "aseet": {
+      "x": [
+        697,
+        991
+      ],
+      "y": [
+        198,
+        366
+      ],
+      "lattia_y": 366,
+      "kansi": "yla"
+    },
+    "sensorit": {
+      "x": [
+        991,
+        1237
+      ],
+      "y": [
+        59,
+        366
+      ],
+      "lattia_y": 366,
+      "kansi": "yla"
+    },
+    "ohjaus": {
+      "x": [
+        438,
+        697
+      ],
+      "y": [
+        403,
+        544
+      ],
+      "lattia_y": 544,
+      "kansi": "ala"
+    },
+    "korjaamo": {
+      "x": [
+        697,
+        991
+      ],
+      "y": [
+        403,
+        544
+      ],
+      "lattia_y": 544,
+      "kansi": "ala"
+    },
+    "suojakilpi": {
+      "x": [
+        991,
+        1237
+      ],
+      "y": [
+        403,
+        544
+      ],
+      "lattia_y": 544,
+      "kansi": "ala"
+    }
+  },
+  "huomautus": "lattia_y on kävelypinta (pikseleitä kuvan yläreunasta, Y kasvaa alaspäin). Hahmon jalkojen pitäisi osua tähän Y:hyn. Huoneen x on puolivälin seinälinjojen mukaan."
+}

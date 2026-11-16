@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="fi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+    <meta name="theme-color" content="#120826" />
+    <title>Kosmoskaappari</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <div id="lobby" class="screen">
+      <div class="lobby-card">
+        <img class="banner" src="/assets/v01/alus_oma.png" alt="Oma alus" />
+        <h1>Kosmoskaappari</h1>
+        <p class="tag">Kaksi merirosvoa. Yksi laiva. Yksi taistelu.</p>
+        <p class="version">Prototyyppi v0.1</p>
+        <label>Nimesi <input id="name" maxlength="16" autocomplete="nickname" placeholder="Merirosvo" /></label>
+        <div class="lobby-actions">
+          <button id="create" class="wood" type="button">Perusta laiva</button>
+          <button id="join" class="wood" type="button">Liity koodilla</button>
+        </div>
+        <label>Huonekoodi <input id="code" maxlength="12" autocapitalize="off" spellcheck="false" placeholder="esim. Ab12Cd34E" /></label>
+        <p id="lobby-status" class="status" role="status"></p>
+      </div>
+    </div>
+
+    <div id="game" class="screen hidden">
+      <div id="side">
+      <header id="topbar">
+        <div class="banner-row">
+          <div id="alert" role="status">Taistelu alkoi.</div>
+          <div class="tools">
+            <button id="share" class="wood tiny" type="button">Kopioi kutsu</button>
+            <button id="mute" class="wood tiny" type="button">Äänet pois</button>
+          </div>
+        </div>
+        <div class="hulls">
+          <div class="hull">
+            <span>Runko <b id="hull-num">100</b></span>
+            <div class="ebar" id="hull-bar"><img class="fill" alt="" src="/assets/v01/energiapalkki_tayte.png" /><img class="frame" alt="" src="/assets/v01/energiapalkki_kehys.png" /></div>
+          </div>
+          <div id="enemy-timer">Vihollisen tykki 6 s</div>
+          <div class="hull enemy">
+            <span>Vihollinen <b id="enemy-num">140</b></span>
+            <div class="ebar" id="enemy-bar"><img class="fill" alt="" src="/assets/v01/energiapalkki_tayte.png" /><img class="frame" alt="" src="/assets/v01/energiapalkki_kehys.png" /></div>
+          </div>
+        </div>
+      </header>
+
+      <div id="ship-pane">
+        <div id="phaser"></div>
+        <p id="ship-caption">Kosketa huonetta</p>
+      </div>
+
+      <footer id="dock">
+        <div id="systems"></div>
+        <div id="pip-row">
+          <span>Seuraava</span>
+          <div class="ebar slim" id="pip-bar"><img class="fill" alt="" src="/assets/v01/energiapalkki_tayte.png" /><img class="frame" alt="" src="/assets/v01/energiapalkki_kehys.png" /></div>
+          <b id="free-energy">Vapaana 0</b>
+        </div>
+        <p id="crew-line"></p>
+        <p id="eff-line"></p>
+      </footer>
+      </div>
+
+      <section id="puzzle">
+        <div id="puzzle-head"></div>
+        <div id="puzzle-body" class="puzzle-body card">
+          <div class="pad left"></div>
+          <div id="board-slot"></div>
+          <div class="pad right"></div>
+        </div>
+      </section>
+
+      <div id="end" class="hidden">
+        <div class="end-card">
+          <h2 id="end-title">Voitto!</h2>
+          <p id="end-body"></p>
+          <button id="restart" class="wood" type="button">Uusi taistelu</button>
+        </div>
+      </div>
+
+    </div>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>
