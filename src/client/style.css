@@ -1,0 +1,349 @@
+@font-face {
+  font-family: Lilita;
+  src: url("./LilitaOne-Regular.ttf") format("truetype");
+  font-display: swap;
+}
+
+:root {
+  color-scheme: dark;
+  --ink: #2a160d;
+  --cream: #fff1cf;
+  --wood: #a56b3c;
+  --space: #120826;
+  --line: #3a2412;
+  --good: #b6ff8a;
+  --bad: #ffb0a0;
+  --gold: #ffd56a;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body {
+  min-height: 100dvh;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse at 50% 0%, #4a2a78 0%, transparent 55%),
+    var(--space);
+  color: var(--cream);
+  font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+  touch-action: manipulation;
+  user-select: none;
+}
+button, input { font: inherit; }
+button { touch-action: manipulation; }
+.hidden { display: none !important; }
+h1, h2, h3, strong, .wood { font-family: Lilita, "Trebuchet MS", sans-serif; letter-spacing: 0.02em; }
+
+.wood {
+  border: 0;
+  color: var(--ink);
+  background: url("/assets/v01/nappi.png") center / 100% 100% no-repeat;
+  min-height: 48px;
+  padding: 8px 14px;
+  cursor: pointer;
+  text-shadow: 0 1px 0 rgba(255, 236, 196, 0.55);
+}
+.wood:active { background-image: url("/assets/v01/nappi_painettu.png"); transform: translateY(1px); }
+.wood.tiny { min-height: 40px; font-size: 14px; }
+
+.screen { min-height: 100dvh; }
+#lobby {
+  display: grid;
+  place-items: center;
+  padding: 18px;
+}
+.lobby-card {
+  width: min(460px, 100%);
+  background: linear-gradient(#6b4328, #4a2d1b);
+  border: 4px solid #2a160d;
+  border-radius: 18px;
+  padding: 16px 16px 20px;
+  box-shadow: 0 16px 0 rgba(0, 0, 0, 0.25);
+  text-align: center;
+}
+.banner { width: 100%; height: 160px; object-fit: contain; background: #1a1030; border-radius: 10px; }
+.lobby-card h1 { margin: 8px 0 0; font-size: 40px; color: var(--gold); text-shadow: 0 3px 0 #2a160d; }
+.tag { margin: 4px 0; }
+.version { margin: 0 0 12px; opacity: 0.8; font-size: 13px; }
+.lobby-card label { display: block; text-align: left; font-size: 14px; margin: 8px 0; }
+.lobby-card input {
+  width: 100%;
+  margin-top: 4px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 3px solid var(--ink);
+  background: #fff6e4;
+  color: var(--ink);
+  font-size: 16px;
+}
+.lobby-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.status { min-height: 1.2em; color: var(--gold); }
+
+#game {
+  height: 100dvh;
+  display: grid;
+  gap: 6px;
+  padding: 6px;
+  padding-bottom: calc(6px + env(safe-area-inset-bottom));
+}
+#topbar, #dock, #puzzle, #ship-pane {
+  min-width: 0;
+  min-height: 0;
+}
+#topbar { grid-area: top; }
+#ship-pane { grid-area: ship; position: relative; overflow: hidden; border-radius: 12px; background: #0c0618; }
+#puzzle { grid-area: puzzle; }
+#dock { grid-area: dock; }
+#phaser { position: absolute; inset: 0; }
+#ship-caption {
+  position: absolute;
+  left: 8px;
+  bottom: 6px;
+  margin: 0;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(22, 10, 8, 0.72);
+  font-size: 12px;
+  pointer-events: none;
+}
+
+#alert {
+  text-align: center;
+  background: #3a2416;
+  border: 3px solid var(--ink);
+  border-radius: 10px;
+  padding: 4px 8px;
+  min-height: 28px;
+  font-family: Lilita, sans-serif;
+}
+#alert.pop { animation: popin 280ms ease; }
+#alert.bad { color: var(--bad); }
+#alert.good { color: var(--good); }
+#alert.warn { color: var(--gold); animation: pulse 0.6s ease infinite; }
+
+.hulls { display: grid; grid-template-columns: 1fr auto 1fr; gap: 8px; align-items: center; margin-top: 4px; }
+.hull span, #enemy-timer, #free-energy, #crew-line, #eff-line { font-size: 13px; }
+#enemy-timer { text-align: center; font-family: Lilita, sans-serif; white-space: nowrap; }
+#enemy-timer.soon { color: #ffb15a; }
+.ebar { position: relative; height: 28px; }
+.ebar.slim { height: 22px; flex: 1; }
+.ebar img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: fill; pointer-events: none; }
+.ebar .fill { clip-path: inset(0 calc((1 - var(--p, 1)) * 100%) 0 0); }
+#enemy-bar .fill { filter: hue-rotate(140deg) saturate(1.4); }
+
+#puzzle {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: rgba(48, 28, 16, 0.72);
+  border: 3px solid var(--ink);
+  border-radius: 14px;
+  padding: 6px;
+  min-height: 0;
+}
+#puzzle-head {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 24px;
+  font-size: 14px;
+}
+#puzzle-head strong { font-size: 18px; color: var(--gold); }
+.ammo { display: flex; gap: 3px; align-items: center; }
+.pellet {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  background: #ffb15a;
+  box-shadow: inset 0 0 0 2px #2a160d;
+}
+.pellet.auto { opacity: 0.45; }
+.puzzle-body { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 6px; }
+.banner-row { display: flex; gap: 6px; align-items: stretch; }
+.banner-row .tools { position: static; flex: none; }
+#alert { flex: 1; min-width: 0; }
+#side { display: contents; }
+#board-slot {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.match {
+  height: 100%;
+  width: auto;
+  max-width: 100%;
+  max-height: 100%;
+  aspect-ratio: 1;
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  grid-template-rows: repeat(8, minmax(0, 1fr));
+  gap: 3px;
+}
+.well {
+  height: 100%;
+  width: auto;
+  max-width: 100%;
+  max-height: 100%;
+  aspect-ratio: 10 / 16;
+  min-width: 0;
+  min-height: 0;
+  background: rgba(18, 8, 6, 0.35);
+  border-radius: 8px;
+  touch-action: none;
+}
+.cell {
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: rgba(255, 236, 200, 0.08);
+  position: relative;
+  overflow: hidden;
+}
+.cell img { width: 100%; height: 100%; object-fit: contain; pointer-events: none; display: block; }
+.cell.sel { outline: 3px solid var(--gold); transform: scale(1.05); z-index: 2; }
+.cell.cursor { box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.35); }
+.cell.hint img { animation: hint 0.7s ease-in-out infinite; }
+.cell.pop img { animation: burst 170ms ease forwards; }
+.pad { display: none; gap: 6px; }
+.puzzle-body.tetris .pad { display: flex; }
+.pad-btn { flex: 1; min-width: 0; min-height: 52px; font-size: 16px; }
+.float-layer { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.floater {
+  position: absolute;
+  left: 50%;
+  top: 38%;
+  transform: translate(-50%, 0);
+  font-family: Lilita, sans-serif;
+  font-size: 22px;
+  color: var(--gold);
+  text-shadow: 0 3px 0 #2a160d;
+  animation: floatup 800ms ease forwards;
+}
+.floater.big { font-size: 34px; color: #fff; }
+.station-card { max-width: 460px; text-align: center; padding: 8px; }
+.station-card h3 { margin: 0 0 6px; font-size: 28px; color: var(--gold); }
+.station-card p { margin: 6px 0; }
+.muted { opacity: 0.8; }
+.card-actions { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+.card-actions .wood { min-width: 140px; }
+
+#dock {
+  background: rgba(42, 22, 13, 0.88);
+  border: 3px solid var(--ink);
+  border-radius: 12px;
+  padding: 6px 8px;
+}
+.sys {
+  display: grid;
+  grid-template-columns: 92px 42px minmax(70px, 1fr) 42px 22px;
+  gap: 4px;
+  align-items: center;
+  margin: 2px 0;
+}
+.sys b { text-align: right; }
+.sys .wood { min-height: 36px; padding: 0; }
+#pip-row { display: flex; gap: 8px; align-items: center; margin-top: 4px; }
+#crew-line, #eff-line { margin: 2px 0 0; opacity: 0.9; }
+#eff-line { font-size: 12px; }
+
+#end {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(8, 4, 16, 0.72);
+  z-index: 5;
+}
+.end-card {
+  width: min(420px, calc(100% - 24px));
+  text-align: center;
+  background: #5a3822;
+  border: 4px solid var(--ink);
+  border-radius: 16px;
+  padding: 18px;
+}
+.end-card h2 { margin: 0; font-size: 48px; color: var(--gold); text-shadow: 0 3px 0 #2a160d; }
+.tools { display: flex; gap: 6px; z-index: 4; }
+#game.shake { animation: rumble 180ms linear; }
+
+body[data-layout="desktop"] #game {
+  grid-template-columns: minmax(0, 1.25fr) minmax(340px, 0.8fr);
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    "top top"
+    "ship puzzle"
+    "dock dock";
+}
+body[data-layout="portrait"] #game {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr) 146px auto;
+  grid-template-areas:
+    "top"
+    "puzzle"
+    "ship"
+    "dock";
+}
+body[data-layout="portrait"] .puzzle-body.tetris { flex-direction: row; align-items: stretch; }
+body[data-layout="portrait"] .puzzle-body.tetris .pad { flex-direction: column; width: 62px; }
+body[data-layout="portrait"] .pad-btn { min-height: 46px; font-size: 14px; padding: 4px; }
+body[data-layout="landscape"] .puzzle-body.tetris {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: 4px;
+}
+body[data-layout="landscape"] .puzzle-body.tetris .pad { display: contents; }
+body[data-layout="landscape"] .puzzle-body.tetris #board-slot { grid-column: 1 / -1; grid-row: 1; }
+body[data-layout="landscape"] .puzzle-body.tetris .pad-btn { grid-row: 2; min-height: 44px; }
+body[data-layout="portrait"] .sys { grid-template-columns: 78px 40px minmax(40px, 1fr) 40px 18px; }
+body[data-layout="landscape"] #game {
+  grid-template-columns: minmax(0, 1fr) minmax(240px, 300px);
+  grid-template-rows: minmax(0, 1fr);
+  grid-template-areas: "puzzle side";
+}
+body[data-layout="landscape"] #side {
+  display: flex;
+  flex-direction: column;
+  grid-area: side;
+  min-height: 0;
+  overflow: auto;
+  gap: 6px;
+}
+body[data-layout="landscape"] #ship-pane { height: 120px; flex: none; }
+body[data-layout="landscape"] .hulls { grid-template-columns: 1fr; }
+body[data-layout="landscape"] #enemy-timer { text-align: left; }
+body:not([data-layout="portrait"]) .puzzle-body.tetris { flex-direction: column; }
+body:not([data-layout="portrait"]) .puzzle-body.tetris #board-slot { order: 1; }
+body:not([data-layout="portrait"]) .puzzle-body.tetris .pad.left,
+body:not([data-layout="portrait"]) .puzzle-body.tetris .pad.right { flex-direction: row; order: 2; }
+
+@media (max-height: 700px) {
+  body[data-layout="portrait"] #game { grid-template-rows: auto minmax(0, 1fr) 112px auto; }
+  .ebar { height: 22px; }
+  #puzzle-head strong { font-size: 16px; }
+}
+@media (max-width: 380px) {
+  body[data-layout="portrait"] .puzzle-body.tetris .pad { width: 58px; }
+  .pad-btn { font-size: 13px; padding: 4px; }
+  .sys { grid-template-columns: 70px 36px minmax(40px, 1fr) 36px 18px; }
+}
+
+@keyframes popin { from { transform: scale(0.92); } to { transform: scale(1); } }
+@keyframes pulse { 50% { transform: scale(1.04); } }
+@keyframes hint { 50% { transform: scale(1.08); filter: brightness(1.35); } }
+@keyframes burst { to { transform: scale(1.4); opacity: 0; filter: brightness(2); } }
+@keyframes floatup { to { transform: translate(-50%, -46px); opacity: 0; } }
+@keyframes rumble {
+  25% { transform: translateX(-3px); }
+  50% { transform: translateX(3px); }
+  75% { transform: translateX(-2px); }
+}

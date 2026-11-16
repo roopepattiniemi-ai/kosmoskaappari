@@ -1,0 +1,60 @@
+/**
+ * Single manifest for v0.1 art. Drop a replacement PNG at the same path,
+ * or change the path here — loaders read only this file.
+ * Frame notes and ship bounds live in assets/v01/LUEMINUT.md and alus_oma.json.
+ */
+export const manifest = {
+  ship: "v01/alus_oma.png",
+  shipMeta: "v01/alus_oma.json",
+  enemy: "v01/alus_vihollinen.png",
+  crew: ["v01/merirosvo1_sheet.png", "v01/merirosvo2_sheet.png"],
+  crystals: [1, 2, 3, 4, 5, 6].map((n) => `v01/kristalli_${n}.png`),
+  /** Colour index 1–7: I O T S Z J L */
+  blocks: [
+    "v01/ammus_pala_syaani.png",
+    "v01/ammus_pala_keltainen.png",
+    "v01/ammus_pala_violetti.png",
+    "v01/ammus_pala_vihrea.png",
+    "v01/ammus_pala_punainen.png",
+    "v01/ammus_pala_sininen.png",
+    "v01/ammus_pala_oranssi.png",
+  ],
+  laser: "v01/laser.png",
+  explosion: "v01/rajahdys_sheet.png",
+  shieldHit: "v01/kilpi_osuma.png",
+  barFrame: "v01/energiapalkki_kehys.png",
+  barFill: "v01/energiapalkki_tayte.png",
+  button: "v01/nappi.png",
+  buttonPressed: "v01/nappi_painettu.png",
+} as const;
+
+export const CREW_FRAME = 128;
+export const CRYSTAL_FRAME = 96;
+export const BLOCK_FRAME = 64;
+/** merirosvo sheets: row 0 idle x4, row 1 walk x4, facing right. */
+export const CREW_IDLE_ROW = 0;
+export const CREW_WALK_ROW = 1;
+export const EXPLOSION_FRAMES = 4;
+export const EXPLOSION_FRAME = 128;
+
+export function assetUrl(rel: string): string {
+  return `/assets/${rel}`;
+}
+
+export function manifestFiles(): string[] {
+  return [
+    manifest.ship,
+    manifest.shipMeta,
+    manifest.enemy,
+    ...manifest.crew,
+    ...manifest.crystals,
+    ...manifest.blocks,
+    manifest.laser,
+    manifest.explosion,
+    manifest.shieldHit,
+    manifest.barFrame,
+    manifest.barFill,
+    manifest.button,
+    manifest.buttonPressed,
+  ];
+}
