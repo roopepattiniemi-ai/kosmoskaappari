@@ -373,7 +373,7 @@ export class PuzzleController {
     const ox = (width - cell * WELL_W) / 2;
     const oy = (height - cell * WELL_H) / 2;
     ctx.clearRect(0, 0, width, height);
-    ctx.fillStyle = "rgba(42, 22, 12, 0.55)";
+    ctx.fillStyle = "rgba(10, 8, 7, 0.72)";
     ctx.fillRect(ox, oy, cell * WELL_W, cell * WELL_H);
     const board = decodeWell(state.weapons.board);
     for (let i = 0; i < board.length; i++) {
@@ -384,7 +384,7 @@ export class PuzzleController {
       this.blit(ctx, color, ox + x * cell, oy + y * cell, cell, 1);
     }
     if (this.flashUntil > performance.now()) {
-      ctx.fillStyle = "rgba(255, 236, 170, 0.45)";
+      ctx.fillStyle = "rgba(230, 195, 106, 0.38)";
       for (const y of this.flashRows) ctx.fillRect(ox, oy + y * cell, cell * WELL_W, cell);
     }
     const active = this.visualActive(state, board);

@@ -24,14 +24,27 @@ export interface SectionDef {
   deck: DeckId;
   x0: number;
   x1: number;
+  /** Arch peak from alus_oma.json. Upper rooms are gothic arches, not flat ceilings. */
   y0: number;
   y1: number;
+  /** Where the arch meets the wall. Highlights and taps use this so the spire stays clear. */
+  hitY0: number;
   floorY: number;
   /** Puzzle available in v0.1. */
   playable: "reactor" | "weapons" | null;
   blurb: string;
   effect: string;
 }
+
+/** Arch spring line from LUEMINUT.md. Walls come down below the peak stored in y[0]. */
+const ARCH_FOOT: Partial<Record<SectionId, number>> = {
+  reaktori: 220,
+  aseet: 245,
+  sensorit: 150,
+};
+
+/** Feet sit on this row of every 128×128 pirate frame. Frame top = floorY − FEET_ROW. */
+export const FEET_ROW = 124;
 
 function room(
   id: SectionId,
@@ -49,6 +62,7 @@ function room(
     x1: raw.x[1],
     y0: raw.y[0],
     y1: raw.y[1],
+    hitY0: ARCH_FOOT[id] ?? raw.y[0],
     floorY: raw.lattia_y,
     playable,
     blurb,
@@ -107,10 +121,13 @@ export const SECTIONS: Record<SectionId, SectionDef> = {
  */
 export const LADDER_X = 668;
 
-/** Our cannon muzzle in ship pixels. Bow is on the left. */
-export const MUZZLE = { x: 252, y: 308 };
-/** Rough centre of the hull for impacts. */
-export const HULL_HIT = { x: 820, y: 470 };
+/** Bow cannon muzzle in ship pixels. The barrel points left. */
+export const MUZZLE = { x: 216, y: 330 };
+/** Mid-hull, where incoming fire lands. */
+export const HULL_HIT = { x: 860, y: 480 };
+/** Enemy bow cannon, in the 900×500 enemy sprite. The barrel points right. */
+export const ENEMY_MUZZLE = { x: 754, y: 265 };
+export const ENEMY_CENTER = { x: 460, y: 250 };
 
 export function isSectionId(value: string): value is SectionId {
   return (SECTION_IDS as readonly string[]).includes(value);
@@ -172,7 +189,7 @@ export function buildPath(
 export function sectionAt(x: number, y: number): SectionId | null {
   for (const id of SECTION_IDS) {
     const s = SECTIONS[id];
-    if (x >= s.x0 && x < s.x1 && y >= s.y0 && y <= s.y1) return id;
+    if (x >= s.x0 && x < s.x1 && y >= s.hitY0 && y <= s.y1) return id;
   }
   // Floors are easier to tap than the thin room rects: accept a band above the floor.
   for (const id of SECTION_IDS) {

@@ -47,7 +47,7 @@ Puhelimessa (pysty ja vaaka) pulma on iso, alus on minikartta ja hälytykset ylh
 
 ## Grafiikka
 
-Tiedostot ovat `assets/v01/`. `LUEMINUT.md` kertoo ruudut ja koot, `alus_oma.json` lattian Y:n ja huoneiden rajat. Pelin latauslista on yhdessä paikassa: `src/shared/assets.ts`. Uusi PNG samalla nimellä vaihtuu ilman muuta koodia; uusi tiedostonimi päivitetään vain manifestiin.
+Tiedostot ovat `assets/v01/`. Nykyinen suunta on goottilainen 2.5D-renderöinti (samat tiedostonimet ja ruutujärjestys). `LUEMINUT.md` kertoo ruudut, kaarten jalat ja sen, että merirosvon jalat ovat rivillä y=124. `alus_oma.json` antaa lattian Y:n ja huoneiden rajat. Pelin latauslista on yhdessä paikassa: `src/shared/assets.ts`.
 
 ## Testit
 
