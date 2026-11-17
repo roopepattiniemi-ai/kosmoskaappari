@@ -1,10 +1,84 @@
-# Kosmoskaappari v0.2 — 3D-grafiikka (2.5D)
+# Kosmoskaappari v0.3 — 3D-grafiikka (2.5D)
+
+## Muutokset v0.2 → v0.3 (lyhyesti)
+
+- **Koordinaatit ennallaan:** tiedostonimet, pikselikoot, sheet-järjestykset, lattiat (y = 366 / 544), huoneiden x/y-välit, energiapalkin sisäalue (x=10, y=6, 236×20) ja merirosvojen jalkarivi (y = 124) ovat samat. `alus_oma.json` generoidaan uudelleen, ja ainoa muuttunut arvo on `sisalto_bbox` = [170, 4, 1487, 686] (renderöity sisältö pysyy rajauksen x 169…1489 sisällä).
+- **Oma alus:** jokaisella huoneella on oma seinäsävy ja oma valo:
+  - reaktori: vihreä
+  - aseet: punaruskea
+  - sensorit: meripihka
+  - ohjaus: teräksensininen
+  - korjaamo: tuli-oranssi
+  - suojakilpi: sininen
+
+  Lisäksi alus sai paljon uutta detaljia:
+  - Huoneiden välissä on vahvat pilariväliseinät, joissa on messinkikapiteelit, jalustat, niitit ja kallokynttilät.
+  - Kaarissa on krabbikoristeet, messinkiset lakikivet ja kallot.
+  - Katossa riippuu ketjulyhtyjä ja roikkuvia kaapeleita, ja alakannella kulkee kattoputkisto, jossa on venttiilipyörät.
+  - Lattialla on kynttiläryppäitä. Korjaamossa on hiilipannu, sensoreissa kallohylly ja reaktorissa varoitusvalot.
+  - Rungon vatsassa on goottiarkadi.
+  - Keulassa on kallokynttilät ja piikit, ja perässä pakosarjat.
+
+  Valaistusta ja syvyyttä on parannettu:
+  - syvyysusva (sävyttää kaukaisia osia)
+  - huonekohtainen säteittäinen valo ja yläosan usva
+  - vinjetti ja reunavalo
+
+  Keulan kalloviiri poistettiin, koska se jäi tykin taakse.
+- **Merirosvot:**
+  - Kapteenilla on isompi kaksikärkihattu, jossa on punainen töyhtö ja kallomerkki. Mekaaninen kynsikoura on isompi ja sormet on nivelletty. Lisäksi hänellä on hengityssuojain isoin punaisin linssein, letku ja paineilmasäiliö selässä sekä roikkuva punainen vyönauha.
+  - Miehistöläisellä on isompi kynttiläliekki, isommat vihreät suojalasit, hulmuava huivi, reppu, jossa on käämi ja antenni, järeämpi mekaaninen sääri ja isompi jakoavain.
+  - Kävely:
+    - takinhelmat ja kädet jäävät vaiheessa jälkeen (overlap ja follow-through)
+    - kyynärpäät viivästyvät ja lantio kiertyy ja kallistuu
+    - selkä nojaa eteen, pää nyökkää ja kääntyy vastaliikkeessä
+    - vyönauha ja huivi hulmuavat, ja liekki kallistuu
+  - Idle:
+    - painonsiirto, hengitys rintakehässä ja pää katselee ympärilleen
+    - kapteeni koukistaa nostettua kouraansa
+    - miehistöläinen napauttaa jakoavaimella, ja liekki lepattaa
+- **Vihollinen:**
+  - tummemmat levyt ja punainen reunavalo
+  - toinen tykkikansi (yhteensä 10 laitatykkiä), kaksoistorni ja keulatykki
+  - sahalaitainen, isompi puskukärki
+  - kaksi punaisena hehkuvaa "silmäikkunaa" kulmakarvoineen
+  - isompi kallokeulakuva hehkuvin silmin
+  - kaide-, linna- ja köliterät sekä moottorisavu
+- **Kiteet:** jokaiselle on oma ääriviivaväri (värillinen muste), kiillot ja tähtikimallukset. Värit on hajautettu sekä sävyssä että valoisuudessa. Keskimääräiset luminanssit (0–255):
+
+  | Kide | Väri | Luminanssi |
+  |---|---|---|
+  | 1 | punainen | 103 |
+  | 2 | oranssi | 151 |
+  | 3 | keltainen | 226 |
+  | 4 | vihreä | 184 |
+  | 5 | sininen | 84 |
+  | 6 | violetti | 135 |
+
+  Muodot ovat samat kuin ennen.
+- **Ammuspalat:** jokaisessa palassa on goottilaiset messinkikulmat, tumma sisäkehys, värillinen emali, hehkurengas ja messinkinen patruunaembleemi.
+- **Räjähdys:**
+  - Ruuduissa 1–2 on paineaaltorenkaat, kipinäsäteet ja hehkuvat sirpaleet.
+  - Savuruudussa on hiillos.
+- **Laser:**
+  - kerroksellinen oranssi usva, kultainen runko ja valkoinen ydin
+  - kärkitähti ja jäljessä kipinät
+- **Kilpiosuma:**
+  - kuusikulmiokennosto
+  - katkonaiset kaaret ja sähkösäröt
+  - kipinät ja iskurengas
+  - puoliksi läpinäkyvä sininen keskusta
+- **UI:**
+  - Energiapalkin kehyksessä on messinkiset suippopäädyt, goottikulmat, punaiset jalokivinastat ja niitit.
+  - Energiapalkin täytteessä on solujakajat ja kiiltoraita.
+  - Napeissa on kaksoismessinkireunus, goottikulmat, kaarikoristeet ja niittirivit.
+  - Painettu nappi on uponnut ja tummempi. Siinä on käänteinen viiste, sisävarjo ja hehkuva messinkiääriviiva, joten se erottuu selvästi.
 
 Tyyli: konsepti `konseptit/40k/konsepti_40k_1_goottinen_synkka.jpg` (goottilainen ja synkkä rautakatedraali-avaruusmerirosvo) tehtynä oikeina 3D-malleina ja renderöitynä PNG:ksi Dead Cells / Cult of the Lamb -tyyliin. Renderöinti: Blender 5.3 (pip `bpy`, headless) + Cycles. Varjostin on oma cel/toon-ryhmä: kolme valokaistaa kiinteästä valosuunnasta, AO-tummennus, kiiltokaista metalleille, sinertävä reunavalo ja likakohina. Ääriviivat tulevat Freestylestä, ja hehkuvat osat saavat erillisen hehkupassin, joka sumennetaan päälle. Renderöinti tehdään 2× tai 4× koossa ja skaalataan alas, mikä antaa antialiasoinnin.
 
 Kuvissa ei ole tekstejä, Warhammer-symboleja eikä brändilogoja. Ainoat tunnukset ovat tavallisia merirosvokalloja ja sääriluita.
 
-Kaikki tiedostonimet, pikselikoot ja ruutujärjestykset ovat samat kuin v01:ssä, joten kansion voi vaihtaa suoraan. Kaikki PNG:t ovat RGBA-muotoisia ja niissä on läpinäkyvä tausta.
+Kaikki tiedostonimet, pikselikoot ja ruutujärjestykset ovat samat kuin v01:ssä ja v02_3d:ssä, joten kansion voi vaihtaa suoraan. Kaikki PNG:t ovat RGBA-muotoisia ja niissä on läpinäkyvä tausta.
 
 ## Alukset
 
@@ -13,13 +87,13 @@ Kaikki tiedostonimet, pikselikoot ja ruutujärjestykset ovat samat kuin v01:ssä
   - Alakannen katto on y = 403 (kansien välinen palkki on y = 366…403).
   - Huoneiden x-välit ovat samat kuin v01:ssä (seinälinjojen keskeltä mitattuna):
     - **reaktori**: x=[438, 697], y=[138, 366], yläkansi. Vihreä reaktori häkissä, putket ja mittarit.
-    - **aseet**: x=[697, 991], y=[198, 366], yläkansi. Iso tykki lavetilla ja kuulat. Katolla masto ja kallopurje.
+    - **aseet**: x=[697, 991], y=[198, 366], yläkansi. Iso tykki lavetilla ja kuulat. Katolla masto ja kallopurje. Seinät ovat punaruskeat.
     - **sensorit**: x=[991, 1237], y=[59, 366], yläkansi. Ruusuikkuna, kaksi meripihkanäyttöistä konsolia, ruori ja kaukoputki.
     - **ohjaus**: x=[438, 697], y=[403, 544], alakansi. Ammeohjaamo, jossa on ohjaussauva, vihreä näyttö ja kynttelikkö.
     - **korjaamo**: x=[697, 991], y=[403, 544], alakansi. Työpöytä, punainen työkalulaatikko, alasin, ketju ja hammasratas.
     - **suojakilpi**: x=[991, 1237], y=[403, 544], alakansi. Sininen kilpipallo ja kaksi teslapylvästä salamoineen.
   - Yläkannen huoneiden `y[0]` on goottikaaren sisähuippu. Kaari laskeutuu seiniä kohti, ja kaaren jalka on reaktorissa y ≈ 220, aseissa y ≈ 245 ja sensoreissa y ≈ 150.
-  - Sisällön bbox on `[169, 4, 1489, 686]`. Se on leveämpi kuin v01:ssä, koska mukana ovat keulan torni ja moottorin liekit.
+  - Sisällön bbox on `[170, 4, 1487, 686]`. Kaikki renderöity sisältö on rajattu välille x 169…1489. Bbox on leveämpi kuin v01:ssä, koska mukana ovat keulan torni ja moottorin liekit.
 - `alus_oma.json` noudattaa samaa skeemaa kuin v01, todellisin arvoin. Lisäkenttänä on `px_per_yksikko`.
 - `alus_vihollinen.png`, 900×500. Goottilainen korsaari, keula oikealle. Kevyt 3/4-kulma (kamera kääntyy 16° ja kallistuu 9° alaspäin) ortokameralla, kokonainen siluetti. Mukana punaisina hehkuvat goottilaiset ikkunat, viiden tykin laita, keulatykki, piikkikärki, kallokeulakuva, punamusta kallopurje ja kaksi perämoottoria.
 
@@ -86,15 +160,15 @@ Rautalaatta, jossa on messinkiniitit, värillinen emalipinta ja hehkuva keskinas
 
 ## Lähteet ja uudelleenrenderöinti: `lahde/`
 
-- `yhteiset.py`: toon-varjostin, Freestyle-ääriviivat, mesh-rakentaja (laatikot, lieriöt, kuoret, profiilipuristus, suippokaaret, kallo), renderöinti ja hehkukomposiitti.
+- `yhteiset.py`: toon-varjostin, Freestyle-ääriviivat, mesh-rakentaja (laatikot, lieriöt, kuoret, profiilipuristus, suippokaaret, kallo, ketjukaari `catenary`, x-rajaus `clamp_x`), syvyysusva (`toon_set(fog=...)`), renderöinti ja hehkukomposiitti.
 - `rakenna_alus_oma.py`: tuottaa `alus_oma.blend`, `alus_oma.png` ja `alus_oma.json`.
 - `rakenna_vihollinen.py`: tuottaa `alus_vihollinen.blend` ja `alus_vihollinen.png`.
 - `rakenna_merirosvot.py [1|2]`: tuottaa `merirosvo1.blend`, `merirosvo2.blend` (nivelet ja keyframet) ja sheetit.
   - Uuden animaation saa lisäämällä `set_pose()`-funktioon uuden tilan, esim. `"attack"`, ja renderöimällä samalla kameralla.
 - `rakenna_esineet.py [kristallit ammukset palkki napit rajahdys]`: tuottaa .blend-tiedostot ja PNG:t.
 - `efektit_2d.py`: laser ja kilpiosuma (Pillow).
-- `kokoa.py`: kokotarkistus ja esikatselu `../../v02_3d_esikatselu.png`.
-- `renderoi_kaikki.sh`: ajaa kaiken (noin 3 min 8 ytimellä).
+- `kokoa.py`: kokotarkistus ja esikatselu `../../v03_3d_esikatselu.png`.
+- `renderoi_kaikki.sh`: ajaa kaiken (noin 3 min 8 ytimellä): `cd lahde && ./renderoi_kaikki.sh`.
 
 Ympäristö: `python3 -m venv /workspace/.bpyvenv && /workspace/.bpyvenv/bin/pip install bpy==5.3.0 numpy pillow`. Tarvitaan Python 3.13, eikä GPU:ta tarvita, koska Cycles toimii CPU:lla.
 
@@ -104,6 +178,10 @@ Ympäristö: `python3 -m venv /workspace/.bpyvenv && /workspace/.bpyvenv/bin/pip
 
 - Oman aluksen yläkannen kaaret ovat matalia suippokaaria, jotta huoneiden korkeudet (y-arvot) pysyvät v01:n mukaisina.
 - Aluksen ulkosilhuetti on hieman leveämpi kuin v01:ssä (bbox x 169…1489), mutta huoneet ja lattiat ovat täsmälleen samoissa kohdissa.
-- Merirosvojen idle-pomppu on pieni (pää ei liiku ylös ja alas, vain kädet, pää ja polvet liikkuvat). Kävelyssä pää liikkuu noin 4 px.
+- Merirosvojen idle on 4 ruudun mittainen, joten liike on pieni (hengitys, katse, koura/jakoavain). Kävelyssä pää liikkuu noin 4–6 px.
+- Saappaissa voi näkyä yksittäisessä kävelyruudussa harmaampi valokaista, koska cel-kaista vaihtuu jalan kulman mukaan.
+- Oranssin ja vihreän kiteen valoisuus on lähellä toisiaan (151 / 184), mutta niiden sävyero on suuri. Punainen ja sininen erottuvat sävyn lisäksi muodoltaan.
+- Huonevalot, usva ja vinjetti ovat 2D-jälkikäsittelyä alusrenderöinnin päällä (`room_lights()` tiedostossa `rakenna_alus_oma.py`). Ne on rajattu kunkin huoneen alueelle.
+- Puhelinkoko on tarkistettu 0.5×-alasskaalauksella: huoneet, hahmot ja vihollisen siluetti erottuvat. Pienimmät detaljit (niitit, kynttilät) sulautuvat tekstuuriksi.
 - Laser ja kilpiosuma ovat 2D-komposiitteja (tehty samaan cel- ja hehkutyyliin). Muut assetit on renderöity 3D:stä.
 - Energiapalkin täytteen reunat on rajattu tarkasti suorakaiteeseen, joten hehku ei vuoda kehyksen alle.

@@ -15,7 +15,7 @@ describe("ship layout", () => {
     assert.equal(FLOOR_Y.ala, json.lattia_y.ala);
     assert.equal(FLOOR_Y.yla, 366);
     assert.equal(FLOOR_Y.ala, 544);
-    assert.deepEqual(json.sisalto_bbox, [169, 4, 1489, 686]);
+    assert.deepEqual(json.sisalto_bbox, [170, 4, 1487, 686]);
     assert.ok(SECTIONS.reaktori.hitY0 > SECTIONS.reaktori.y0);
     assert.ok(SECTIONS.aseet.hitY0 > SECTIONS.aseet.y0);
     assert.ok(SECTIONS.sensorit.hitY0 > SECTIONS.sensorit.y0);
