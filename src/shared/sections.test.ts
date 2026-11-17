@@ -4,7 +4,7 @@ import path from "node:path";
 import { describe, it } from "node:test";
 import { fileURLToPath } from "node:url";
 import { manifestFiles } from "./assets.ts";
-import { FLOOR_Y, LADDER_X, SECTIONS, buildPath, standPoint } from "./sections.ts";
+import { FEET_ROW, FLOOR_Y, LADDER_X, SECTIONS, buildPath, standPoint } from "./sections.ts";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 
@@ -15,6 +15,11 @@ describe("ship layout", () => {
     assert.equal(FLOOR_Y.ala, json.lattia_y.ala);
     assert.equal(FLOOR_Y.yla, 366);
     assert.equal(FLOOR_Y.ala, 544);
+    assert.deepEqual(json.sisalto_bbox, [170, 4, 1487, 686]);
+    assert.ok(SECTIONS.reaktori.hitY0 > SECTIONS.reaktori.y0);
+    assert.ok(SECTIONS.aseet.hitY0 > SECTIONS.aseet.y0);
+    assert.ok(SECTIONS.sensorit.hitY0 > SECTIONS.sensorit.y0);
+    assert.equal(SECTIONS.ohjaus.hitY0, SECTIONS.ohjaus.y0);
     for (const [id, room] of Object.entries(json.huoneet) as Array<
       [keyof typeof SECTIONS, { x: number[]; y: number[]; lattia_y: number; kansi: string }]
     >) {
@@ -54,6 +59,9 @@ describe("ship layout", () => {
     assert.equal(cross[1]!.y, FLOOR_Y.yla);
     assert.equal(cross[2]!.y, FLOOR_Y.yla);
     assert.equal(cross[2]!.deck, "yla");
+    assert.equal(FEET_ROW, 124);
+    assert.equal(FLOOR_Y.yla - FEET_ROW, 242);
+    assert.equal(FLOOR_Y.ala - FEET_ROW, 420);
   });
 
   it("lists every file the manifest promises", () => {
