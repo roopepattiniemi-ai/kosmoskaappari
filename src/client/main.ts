@@ -179,7 +179,7 @@ function bootPhaser(): void {
   phaser = new Phaser.Game({
     type: Phaser.AUTO,
     parent: "phaser",
-    backgroundColor: "#120826",
+    backgroundColor: "#0c0b0d",
     banner: false,
     scale: { mode: Phaser.Scale.RESIZE, autoCenter: Phaser.Scale.CENTER_BOTH, width: 960, height: 540 },
     scene: [ShipScene],

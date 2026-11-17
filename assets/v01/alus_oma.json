@@ -2,12 +2,13 @@
   "leveys": 1600,
   "korkeus": 700,
   "sisalto_bbox": [
-    238,
-    0,
-    1361,
-    700
+    169,
+    4,
+    1489,
+    686
   ],
-  "skaala_lahteesta": 0.988701,
+  "skaala_lahteesta": 1.0,
+  "px_per_yksikko": 100.0,
   "lattia_y": {
     "yla": 366,
     "ala": 544
@@ -90,5 +91,5 @@
       "kansi": "ala"
     }
   },
-  "huomautus": "lattia_y on kävelypinta (pikseleitä kuvan yläreunasta, Y kasvaa alaspäin). Hahmon jalkojen pitäisi osua tähän Y:hyn. Huoneen x on puolivälin seinälinjojen mukaan."
+  "huomautus": "lattia_y on kävelypinta (pikseleitä kuvan yläreunasta, Y kasvaa alaspäin). Hahmon jalkojen pitäisi osua tähän Y:hyn. Huoneen x on puolivälin seinälinjojen mukaan. Yläkannen huoneiden y[0] on goottikaaren sisähuippu (kaari laskeutuu seiniä kohti, aseet-huoneen kaaren jalka y=245, reaktorin y=220, sensorien y=150). v0.2: renderöity 3D-mallista ortokameralla, 1 Blender-yksikkö = 100 px."
 }

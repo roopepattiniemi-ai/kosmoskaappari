@@ -2,6 +2,9 @@ import Phaser from "phaser";
 import { assetUrl, manifest, CREW_FRAME, EXPLOSION_FRAME } from "../../shared/assets.js";
 import {
   CONTENT_BBOX,
+  ENEMY_CENTER,
+  ENEMY_MUZZLE,
+  FEET_ROW,
   FLOOR_Y,
   HULL_HIT,
   LADDER_X,
@@ -13,8 +16,9 @@ import {
 } from "../../shared/sections.js";
 import { bridge } from "../bridge.js";
 
-const FEET_Y = 124 / CREW_FRAME;
-const CREW_SCALE = 0.8;
+const FEET_Y = FEET_ROW / CREW_FRAME;
+/** Native frame size: the top of the sprite sits at floorY − 124. */
+const CREW_SCALE = 1;
 
 interface CrewTarget {
   x: number;
@@ -53,7 +57,7 @@ export class ShipScene extends Phaser.Scene {
   }
 
   create(): void {
-    this.cameras.main.setBackgroundColor("#120826");
+    this.cameras.main.setBackgroundColor("#0c0b0d");
     this.stars = this.add.graphics();
     this.ship = this.add.container(0, 0);
     const hull = this.add.image(0, 0, "ship").setOrigin(0, 0);
@@ -66,7 +70,7 @@ export class ShipScene extends Phaser.Scene {
       fontFamily: "Lilita, sans-serif",
       fontSize: "22px",
       color: "#fff4d2",
-      stroke: "#2a160d",
+      stroke: "#000000",
       strokeThickness: 5,
     }).setOrigin(0.5, 1).setDepth(20);
 
@@ -118,13 +122,13 @@ export class ShipScene extends Phaser.Scene {
         const sprite = this.add.sprite(0, 0, target.color === 0 ? "crew0" : "crew1", 0);
         sprite.setOrigin(0.5, FEET_Y);
         sprite.setScale(CREW_SCALE);
-        const ring = this.add.ellipse(0, -2, 54, 16, 0xf0c14a, 0.0);
+        const ring = this.add.ellipse(0, -2, 72, 14, 0xe6c36a, 0.0);
         const root = this.add.container(target.x, target.y, [ring, sprite]);
         this.ship.add(root);
         actor = { root, sprite, ring, shownX: target.x, shownY: target.y };
         this.crew.set(id, actor);
       }
-      actor.ring.setFillStyle(0xf0c14a, id === bridge.sessionId ? 0.45 : 0);
+      actor.ring.setFillStyle(0xe6c36a, id === bridge.sessionId ? 0.4 : 0);
     }
     for (const [id, actor] of this.crew) {
       if (!next.has(id)) {
@@ -178,7 +182,7 @@ export class ShipScene extends Phaser.Scene {
     for (let i = 0; i < 70; i++) {
       const x = (i * 97) % w;
       const y = (i * 53) % h;
-      this.stars.fillStyle(i % 5 === 0 ? 0xffe7a8 : 0xffffff, i % 5 === 0 ? 0.9 : 0.55);
+      this.stars.fillStyle(i % 5 === 0 ? 0xe6c36a : 0xfff4dd, i % 5 === 0 ? 0.85 : 0.45);
       this.stars.fillCircle(x, y, i % 7 === 0 ? 1.7 : 1);
     }
     const [bx, by, bx2, by2] = CONTENT_BBOX;
@@ -207,10 +211,11 @@ export class ShipScene extends Phaser.Scene {
       const mine = id === this.mine;
       const hot = id === this.hover;
       if (!mine && !hot) continue;
-      g.fillStyle(mine ? 0xf0c14a : 0x7ec8ff, mine ? 0.16 * pulse + 0.08 : 0.18);
-      g.fillRect(s.x0, s.y0, s.x1 - s.x0, s.y1 - s.y0);
-      g.lineStyle(mine ? 6 : 4, mine ? 0xffe08a : 0xffffff, mine ? 0.9 : 0.75);
-      g.strokeRect(s.x0 + 2, s.y0 + 2, s.x1 - s.x0 - 4, s.y1 - s.y0 - 4);
+      const top = s.hitY0;
+      g.fillStyle(mine ? 0xe6c36a : 0xc45a32, mine ? 0.12 * pulse + 0.05 : 0.1);
+      g.fillRect(s.x0, top, s.x1 - s.x0, s.y1 - top);
+      g.lineStyle(mine ? 5 : 3, mine ? 0xe6c36a : 0xd7c4a0, mine ? 0.85 : 0.45);
+      g.strokeRect(s.x0 + 2, top + 2, s.x1 - s.x0 - 4, s.y1 - top - 4);
     }
   }
 
@@ -222,7 +227,7 @@ export class ShipScene extends Phaser.Scene {
     }
     const s = SECTIONS[id];
     const x = this.ship.x + ((s.x0 + s.x1) / 2) * this.ship.scaleX;
-    const y = this.ship.y + (s.y0 + 8) * this.ship.scaleY;
+    const y = this.ship.y + (s.hitY0 + 18) * this.ship.scaleY;
     this.label.setText(s.name).setPosition(x, y).setVisible(true);
   }
 
@@ -242,13 +247,16 @@ export class ShipScene extends Phaser.Scene {
 
   private enemyMuzzle(): Phaser.Math.Vector2 {
     return new Phaser.Math.Vector2(
-      this.enemy.x + 755 * this.enemyScale,
-      this.enemy.y + 242 * this.enemyScale,
+      this.enemy.x + ENEMY_MUZZLE.x * this.enemyScale,
+      this.enemy.y + ENEMY_MUZZLE.y * this.enemyScale,
     );
   }
 
   private enemyCenter(): Phaser.Math.Vector2 {
-    return new Phaser.Math.Vector2(this.enemy.x + 420 * this.enemyScale, this.enemy.y + 250 * this.enemyScale);
+    return new Phaser.Math.Vector2(
+      this.enemy.x + ENEMY_CENTER.x * this.enemyScale,
+      this.enemy.y + ENEMY_CENTER.y * this.enemyScale,
+    );
   }
 
   private bolt(from: Phaser.Math.Vector2, to: Phaser.Math.Vector2, tint: number): void {
@@ -287,7 +295,7 @@ export class ShipScene extends Phaser.Scene {
       fontFamily: "Lilita, sans-serif",
       fontSize: "20px",
       color,
-      stroke: "#2a160d",
+      stroke: "#000000",
       strokeThickness: 4,
     }).setOrigin(0.5).setDepth(30);
     this.tweens.add({
@@ -301,18 +309,18 @@ export class ShipScene extends Phaser.Scene {
 }
 
 function drawLadder(g: Phaser.GameObjects.Graphics): void {
-  g.lineStyle(7, 0x4a2a16, 1);
+  g.lineStyle(6, 0x2a2624, 1);
   g.beginPath();
-  g.moveTo(LADDER_X - 12, FLOOR_Y.yla - 6);
-  g.lineTo(LADDER_X - 12, FLOOR_Y.ala + 2);
-  g.moveTo(LADDER_X + 12, FLOOR_Y.yla - 6);
-  g.lineTo(LADDER_X + 12, FLOOR_Y.ala + 2);
+  g.moveTo(LADDER_X - 11, FLOOR_Y.yla - 4);
+  g.lineTo(LADDER_X - 11, FLOOR_Y.ala + 2);
+  g.moveTo(LADDER_X + 11, FLOOR_Y.yla - 4);
+  g.lineTo(LADDER_X + 11, FLOOR_Y.ala + 2);
   g.strokePath();
-  g.lineStyle(5, 0xc4894a, 1);
-  for (let y = FLOOR_Y.yla + 4; y <= FLOOR_Y.ala; y += 16) {
+  g.lineStyle(4, 0xc6a15a, 0.95);
+  for (let y = FLOOR_Y.yla + 6; y <= FLOOR_Y.ala; y += 16) {
     g.beginPath();
-    g.moveTo(LADDER_X - 12, y);
-    g.lineTo(LADDER_X + 12, y);
+    g.moveTo(LADDER_X - 11, y);
+    g.lineTo(LADDER_X + 11, y);
     g.strokePath();
   }
 }

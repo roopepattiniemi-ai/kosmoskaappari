@@ -6,14 +6,15 @@
 
 :root {
   color-scheme: dark;
-  --ink: #2a160d;
-  --cream: #fff1cf;
-  --wood: #a56b3c;
-  --space: #120826;
-  --line: #3a2412;
-  --good: #b6ff8a;
-  --bad: #ffb0a0;
-  --gold: #ffd56a;
+  --ink: #100e0c;
+  --cream: #f3e6c8;
+  --brass: #c6a15a;
+  --space: #0c0b0d;
+  --line: #8a6a32;
+  --good: #d6e7a0;
+  --bad: #e7a090;
+  --gold: #e6c36a;
+  --rust: #c45a32;
 }
 
 * { box-sizing: border-box; }
@@ -22,7 +23,7 @@ body {
   min-height: 100dvh;
   overflow: hidden;
   background:
-    radial-gradient(ellipse at 50% 0%, #4a2a78 0%, transparent 55%),
+    radial-gradient(ellipse at 50% 0%, #3a2814 0%, transparent 48%),
     var(--space);
   color: var(--cream);
   font-family: "Trebuchet MS", "Segoe UI", sans-serif;
@@ -36,12 +37,12 @@ h1, h2, h3, strong, .wood { font-family: Lilita, "Trebuchet MS", sans-serif; let
 
 .wood {
   border: 0;
-  color: var(--ink);
+  color: var(--cream);
   background: url("/assets/v01/nappi.png") center / 100% 100% no-repeat;
   min-height: 48px;
   padding: 8px 14px;
   cursor: pointer;
-  text-shadow: 0 1px 0 rgba(255, 236, 196, 0.55);
+  text-shadow: 0 1px 0 #000, 0 0 6px rgba(0, 0, 0, 0.8);
 }
 .wood:active { background-image: url("/assets/v01/nappi_painettu.png"); transform: translateY(1px); }
 .wood.tiny { min-height: 40px; font-size: 14px; }
@@ -54,15 +55,15 @@ h1, h2, h3, strong, .wood { font-family: Lilita, "Trebuchet MS", sans-serif; let
 }
 .lobby-card {
   width: min(460px, 100%);
-  background: linear-gradient(#6b4328, #4a2d1b);
-  border: 4px solid #2a160d;
-  border-radius: 18px;
+  background: linear-gradient(#2a241c, #14110e);
+  border: 3px solid var(--brass);
+  border-radius: 8px;
   padding: 16px 16px 20px;
-  box-shadow: 0 16px 0 rgba(0, 0, 0, 0.25);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.55);
   text-align: center;
 }
-.banner { width: 100%; height: 160px; object-fit: contain; background: #1a1030; border-radius: 10px; }
-.lobby-card h1 { margin: 8px 0 0; font-size: 40px; color: var(--gold); text-shadow: 0 3px 0 #2a160d; }
+.banner { width: 100%; height: 160px; object-fit: contain; background: #070605; border-radius: 6px; }
+.lobby-card h1 { margin: 8px 0 0; font-size: 40px; color: var(--gold); text-shadow: 0 3px 0 #000; }
 .tag { margin: 4px 0; }
 .version { margin: 0 0 12px; opacity: 0.8; font-size: 13px; }
 .lobby-card label { display: block; text-align: left; font-size: 14px; margin: 8px 0; }
@@ -71,9 +72,9 @@ h1, h2, h3, strong, .wood { font-family: Lilita, "Trebuchet MS", sans-serif; let
   margin-top: 4px;
   padding: 10px 12px;
   border-radius: 10px;
-  border: 3px solid var(--ink);
-  background: #fff6e4;
-  color: var(--ink);
+  border: 2px solid var(--brass);
+  background: #1a1612;
+  color: var(--cream);
   font-size: 16px;
 }
 .lobby-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
@@ -91,7 +92,7 @@ h1, h2, h3, strong, .wood { font-family: Lilita, "Trebuchet MS", sans-serif; let
   min-height: 0;
 }
 #topbar { grid-area: top; }
-#ship-pane { grid-area: ship; position: relative; overflow: hidden; border-radius: 12px; background: #0c0618; }
+#ship-pane { grid-area: ship; position: relative; overflow: hidden; border-radius: 8px; background: #070605; border: 2px solid #3a3228; }
 #puzzle { grid-area: puzzle; }
 #dock { grid-area: dock; }
 #phaser { position: absolute; inset: 0; }
@@ -102,16 +103,17 @@ h1, h2, h3, strong, .wood { font-family: Lilita, "Trebuchet MS", sans-serif; let
   margin: 0;
   padding: 2px 8px;
   border-radius: 999px;
-  background: rgba(22, 10, 8, 0.72);
+  background: rgba(12, 10, 8, 0.78);
+  border: 1px solid var(--brass);
   font-size: 12px;
   pointer-events: none;
 }
 
 #alert {
   text-align: center;
-  background: #3a2416;
-  border: 3px solid var(--ink);
-  border-radius: 10px;
+  background: #16130f;
+  border: 2px solid var(--brass);
+  border-radius: 6px;
   padding: 4px 8px;
   min-height: 28px;
   font-family: Lilita, sans-serif;
@@ -129,15 +131,15 @@ h1, h2, h3, strong, .wood { font-family: Lilita, "Trebuchet MS", sans-serif; let
 .ebar.slim { height: 22px; flex: 1; }
 .ebar img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: fill; pointer-events: none; }
 .ebar .fill { clip-path: inset(0 calc((1 - var(--p, 1)) * 100%) 0 0); }
-#enemy-bar .fill { filter: hue-rotate(140deg) saturate(1.4); }
+#enemy-bar .fill { filter: sepia(1) saturate(5) hue-rotate(-25deg) brightness(0.85); }
 
 #puzzle {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  background: rgba(48, 28, 16, 0.72);
-  border: 3px solid var(--ink);
-  border-radius: 14px;
+  background: rgba(18, 15, 12, 0.92);
+  border: 2px solid var(--brass);
+  border-radius: 8px;
   padding: 6px;
   min-height: 0;
 }
@@ -155,8 +157,8 @@ h1, h2, h3, strong, .wood { font-family: Lilita, "Trebuchet MS", sans-serif; let
   width: 14px;
   height: 14px;
   border-radius: 3px;
-  background: #ffb15a;
-  box-shadow: inset 0 0 0 2px #2a160d;
+  background: #e6c36a;
+  box-shadow: inset 0 0 0 2px #1a120c;
 }
 .pellet.auto { opacity: 0.45; }
 .puzzle-body { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 6px; }
@@ -194,7 +196,7 @@ h1, h2, h3, strong, .wood { font-family: Lilita, "Trebuchet MS", sans-serif; let
   aspect-ratio: 10 / 16;
   min-width: 0;
   min-height: 0;
-  background: rgba(18, 8, 6, 0.35);
+  background: rgba(8, 7, 6, 0.55);
   border-radius: 8px;
   touch-action: none;
 }
@@ -204,7 +206,7 @@ h1, h2, h3, strong, .wood { font-family: Lilita, "Trebuchet MS", sans-serif; let
   padding: 0;
   border: 0;
   border-radius: 8px;
-  background: rgba(255, 236, 200, 0.08);
+  background: rgba(230, 195, 106, 0.06);
   position: relative;
   overflow: hidden;
 }
@@ -225,7 +227,7 @@ h1, h2, h3, strong, .wood { font-family: Lilita, "Trebuchet MS", sans-serif; let
   font-family: Lilita, sans-serif;
   font-size: 22px;
   color: var(--gold);
-  text-shadow: 0 3px 0 #2a160d;
+  text-shadow: 0 2px 0 #000;
   animation: floatup 800ms ease forwards;
 }
 .floater.big { font-size: 34px; color: #fff; }
@@ -237,9 +239,9 @@ h1, h2, h3, strong, .wood { font-family: Lilita, "Trebuchet MS", sans-serif; let
 .card-actions .wood { min-width: 140px; }
 
 #dock {
-  background: rgba(42, 22, 13, 0.88);
-  border: 3px solid var(--ink);
-  border-radius: 12px;
+  background: rgba(16, 14, 12, 0.94);
+  border: 2px solid var(--brass);
+  border-radius: 8px;
   padding: 6px 8px;
 }
 .sys {
@@ -260,18 +262,18 @@ h1, h2, h3, strong, .wood { font-family: Lilita, "Trebuchet MS", sans-serif; let
   inset: 0;
   display: grid;
   place-items: center;
-  background: rgba(8, 4, 16, 0.72);
+  background: rgba(6, 5, 4, 0.78);
   z-index: 5;
 }
 .end-card {
   width: min(420px, calc(100% - 24px));
   text-align: center;
-  background: #5a3822;
-  border: 4px solid var(--ink);
-  border-radius: 16px;
+  background: linear-gradient(#2a241c, #12100e);
+  border: 3px solid var(--brass);
+  border-radius: 8px;
   padding: 18px;
 }
-.end-card h2 { margin: 0; font-size: 48px; color: var(--gold); text-shadow: 0 3px 0 #2a160d; }
+.end-card h2 { margin: 0; font-size: 48px; color: var(--gold); text-shadow: 0 3px 0 #000; }
 .tools { display: flex; gap: 6px; z-index: 4; }
 #game.shake { animation: rumble 180ms linear; }
 
