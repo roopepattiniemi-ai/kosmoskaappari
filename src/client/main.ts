@@ -3,6 +3,7 @@ import { Client, type Room } from "@colyseus/sdk";
 import { copy } from "../shared/copy.js";
 import { PIP_COST } from "../shared/balance.js";
 import type { GameEvent } from "../shared/protocol.js";
+import { parseIntegrity } from "../shared/stations.js";
 import { SECTION_IDS, SECTIONS, isSectionId, type SectionId } from "../shared/sections.js";
 import { ShipState } from "../server/schema.js";
 import { sfx } from "./audio.js";
@@ -31,6 +32,8 @@ const SYSTEMS = [
   ["weapons", copy.weapons],
   ["shield", copy.shield],
   ["engines", copy.engines],
+  ["repair", copy.repairSys],
+  ["sensors", copy.sensorsSys],
 ] as const;
 
 function classify(): "desktop" | "portrait" | "landscape" {
@@ -98,7 +101,12 @@ function render(state: ShipState): void {
   $("hull-num").textContent = String(Math.ceil(battle.playerHull));
   $("enemy-num").textContent = String(Math.ceil(battle.enemyHull));
   const timer = $("enemy-timer");
-  timer.textContent = copy.enemyGun(battle.enemyIn.toFixed(1));
+  const strike = state.stations.revealed
+    ? SECTIONS[SECTION_IDS[state.stations.target] ?? "aseet"].name
+    : "";
+  timer.textContent = strike
+    ? `Isku: ${strike} ${battle.enemyIn.toFixed(1)}`
+    : copy.enemyGun(battle.enemyIn.toFixed(1));
   timer.classList.toggle("soon", battle.phase === "battle" && battle.enemyIn < 1.6);
 
   const energy = state.energy;
@@ -143,6 +151,7 @@ function render(state: ShipState): void {
     ? copy.walking(isSectionId(me.target) ? SECTIONS[me.target].name : me.target)
     : copy.tapShip;
 
+  scene?.setCracks(parseIntegrity(state.stations.hulls));
   if (scene) {
     const crew = new Map<string, { x: number; y: number; walking: boolean; facing: number; color: number; name: string }>();
     state.players.forEach((player, id) => {

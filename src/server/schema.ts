@@ -22,6 +22,8 @@ export const EnergyState = schema(
     weapons: t.uint8().default(2),
     shield: t.uint8().default(1),
     engines: t.uint8().default(1),
+    repair: t.uint8().default(0),
+    sensors: t.uint8().default(0),
   },
   "EnergyState",
 );
@@ -55,6 +57,30 @@ export const WeaponsState = schema(
 );
 export type WeaponsState = SchemaType<typeof WeaponsState>;
 
+export const StationsState = schema(
+  {
+    /** Integrity of the six compartments, SECTION_IDS order. */
+    hulls: t.string().default("100,100,100,100,100,100"),
+    shieldLane: t.uint8().default(1),
+    shieldT: t.float32().default(0),
+    shieldCharge: t.float32().default(40),
+    helmTarget: t.uint8().default(2),
+    helmPos: t.uint8().default(2),
+    helmT: t.float32().default(2.4),
+    dodgeCharge: t.float32().default(40),
+    spark: t.uint8().default(0),
+    sparkT: t.float32().default(2.2),
+    blip: t.uint8().default(3),
+    sweep: t.float32().default(0),
+    revealed: t.boolean().default(false),
+    weak: t.uint8().default(0),
+    /** Compartment the next enemy shot will hit. */
+    target: t.uint8().default(1),
+  },
+  "StationsState",
+);
+export type StationsState = SchemaType<typeof StationsState>;
+
 export const BattleState = schema(
   {
     phase: t.string().default("battle"),
@@ -77,6 +103,7 @@ export const ShipState = schema(
     energy: EnergyState,
     reactor: ReactorState,
     weapons: WeaponsState,
+    stations: StationsState,
     battle: BattleState,
     roomCode: t.string().default(""),
   },

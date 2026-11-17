@@ -237,6 +237,37 @@ h1, h2, h3, strong, .wood { font-family: Lilita, "Trebuchet MS", sans-serif; let
 .muted { opacity: 0.8; }
 .card-actions { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
 .card-actions .wood { min-width: 140px; }
+.station-play { width: min(100%, 520px); height: 100%; display: flex; flex-direction: column; gap: 8px; min-height: 0; }
+.lane-row { flex: 1; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; min-height: 0; }
+.lane { position: relative; overflow: hidden; min-height: 96px; }
+.lane .spark { position: absolute; left: 50%; width: 42px; height: 42px; margin-left: -21px; transition: top 80ms linear; }
+.lane .spark img { width: 100%; height: 100%; object-fit: contain; }
+.lane.hot { box-shadow: inset 0 0 0 2px var(--gold); }
+.lane b { position: absolute; bottom: 8px; left: 0; right: 0; }
+.helm-play, .sensor-play { flex: 1; display: flex; flex-direction: column; gap: 10px; justify-content: center; min-height: 0; }
+.helm-pips, .radar { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 6px; }
+.helm-pips { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.helm-pips i, .radar i {
+  display: block;
+  height: 42px;
+  border: 2px solid var(--brass);
+  background: #1a1612;
+}
+.helm-pips i.mark { background: var(--brass); }
+.helm-pips i.here { box-shadow: inset 0 0 0 4px var(--cream); }
+.radar i.sweep { background: #e6c36a; }
+.radar i.blip { outline: 3px solid #7fd0ff; }
+.wick-track { height: 14px; border: 2px solid var(--brass); background: #1a120c; }
+.wick { display: block; height: 100%; width: 100%; background: linear-gradient(90deg, #e07050, #e6c36a); }
+.helm-actions { display: grid; grid-template-columns: 72px 1fr 72px; gap: 8px; }
+.repair-grid { flex: 1; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: 1fr 1fr; gap: 8px; min-height: 0; }
+.room-fix { position: relative; min-height: 72px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
+.room-fix span, .room-fix b { display: block; line-height: 1.1; }
+.room-fix b { color: var(--gold); font-size: 14px; }
+.room-fix img { position: absolute; width: 28px; height: 28px; right: 6px; top: 6px; opacity: 0; }
+.room-fix.sparking { box-shadow: inset 0 0 0 3px #e07050; }
+.room-fix.sparking img { opacity: 1; }
+.sensor-note { margin: 0; text-align: center; }
 
 #dock {
   background: rgba(16, 14, 12, 0.94);

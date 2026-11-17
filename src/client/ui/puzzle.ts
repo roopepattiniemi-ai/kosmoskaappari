@@ -30,6 +30,7 @@ import {
 } from "../../shared/tetris.js";
 import type { ShipState } from "../../server/schema.js";
 import { sfx } from "../audio.js";
+import { StationBoard, type StationMode } from "./stations.js";
 
 type Send = (type: string, payload?: unknown) => void;
 
@@ -67,6 +68,7 @@ export class PuzzleController {
     private readonly padLeft: HTMLElement,
     private readonly padRight: HTMLElement,
     private readonly send: Send,
+    private readonly stations = new StationBoard(send),
   ) {
     this.crystalImages = manifest.crystals.map((file) => {
       const img = new Image();
@@ -116,9 +118,11 @@ export class PuzzleController {
     const section = (me && isSectionId(me.walking ? me.target : me.section) ? (me.walking ? me.target : me.section) : "ohjaus") as SectionId;
     const here = me && !me.walking ? (me.section as SectionId) : null;
     const def = SECTIONS[section];
-    const mode = me?.walking ? "walk" : here === "aseet" ? "tetris" : here === "reaktori" ? "match" : `card:${section}`;
+    const stationMode = stationModeOf(here);
+    const mode = me?.walking ? "walk" : here === "aseet" ? "tetris" : here === "reaktori" ? "match" : stationMode ?? `card:${section}`;
     this.root.classList.toggle("tetris", mode === "tetris");
     this.root.classList.toggle("mode-reactor", mode === "match");
+    this.root.classList.toggle("mode-station", stationMode !== null && mode === stationMode);
     this.root.classList.toggle("card", mode.startsWith("card") || mode === "walk");
     this.padLeft.hidden = mode !== "tetris";
     this.padRight.hidden = mode !== "tetris";
@@ -150,6 +154,29 @@ export class PuzzleController {
       this.view = "tetris";
       this.ensureWell();
       this.renderWeaponsChrome(state);
+      return;
+    }
+
+    if (stationMode && mode === stationMode) {
+      if (this.view !== mode) {
+        this.view = mode;
+        this.cells = [];
+        this.canvas = null;
+        this.shown = "";
+        this.stations.mount(this.slot, stationMode);
+      }
+      this.stations.sync(state);
+      const charge =
+        stationMode === "shield"
+          ? `varaus ${Math.round(state.stations.shieldCharge)}`
+          : stationMode === "helm"
+            ? `väistö ${Math.round(state.stations.dodgeCharge)}`
+            : stationMode === "repair"
+              ? `runko ${Math.ceil(state.battle.playerHull)}`
+              : state.stations.revealed
+                ? "lukittu"
+                : "etsii";
+      this.head.innerHTML = `<strong>${escapeHtml(def.name)}</strong><span>${escapeHtml(charge)}</span>`;
       return;
     }
 
@@ -230,6 +257,7 @@ export class PuzzleController {
   key(event: KeyboardEvent): void {
     const me = this.state?.players.get(this.sessionId);
     if (!me || me.walking) return;
+    if (this.stations.key(me.section as SectionId, event)) return;
     if (me.section === "aseet") {
       const map: Record<string, TetrisCmd | undefined> = {
         ArrowLeft: "left",
@@ -626,6 +654,14 @@ export class PuzzleController {
     layer.append(node);
     window.setTimeout(() => node.remove(), 900);
   }
+}
+
+function stationModeOf(section: SectionId | null): StationMode | null {
+  if (section === "suojakilpi") return "shield";
+  if (section === "ohjaus") return "helm";
+  if (section === "korjaamo") return "repair";
+  if (section === "sensorit") return "sensors";
+  return null;
 }
 
 function serverActive(state: ShipState): Active | null {

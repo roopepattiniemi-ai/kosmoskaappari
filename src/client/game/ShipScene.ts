@@ -41,6 +41,8 @@ export class ShipScene extends Phaser.Scene {
   private targets = new Map<string, CrewTarget>();
   private label!: Phaser.GameObjects.Text;
   private enemyScale = 0.2;
+  private cracks = [100, 100, 100, 100, 100, 100];
+  private static readonly TINTS = [0xffffff, 0xffffff, 0xe6c36a, 0x8ec5ff, 0xe07050];
 
   constructor() {
     super("ship");
@@ -119,7 +121,8 @@ export class ShipScene extends Phaser.Scene {
       if (id === bridge.sessionId && !target.walking) this.mine = section;
       let actor = this.crew.get(id);
       if (!actor) {
-        const sprite = this.add.sprite(0, 0, target.color === 0 ? "crew0" : "crew1", 0);
+        const sprite = this.add.sprite(0, 0, target.color % 2 === 0 ? "crew0" : "crew1", 0);
+        sprite.setTint(ShipScene.TINTS[target.color] ?? 0xffffff);
         sprite.setOrigin(0.5, FEET_Y);
         sprite.setScale(CREW_SCALE);
         const ring = this.add.ellipse(0, -2, 72, 14, 0xe6c36a, 0.0);
@@ -128,6 +131,7 @@ export class ShipScene extends Phaser.Scene {
         actor = { root, sprite, ring, shownX: target.x, shownY: target.y };
         this.crew.set(id, actor);
       }
+      actor.sprite.setTint(ShipScene.TINTS[target.color] ?? 0xffffff);
       actor.ring.setFillStyle(0xe6c36a, id === bridge.sessionId ? 0.4 : 0);
     }
     for (const [id, actor] of this.crew) {
@@ -136,6 +140,10 @@ export class ShipScene extends Phaser.Scene {
         this.crew.delete(id);
       }
     }
+  }
+
+  setCracks(values: number[]): void {
+    this.cracks = values;
   }
 
   playFx(kind: string, amount: number): void {
@@ -162,7 +170,7 @@ export class ShipScene extends Phaser.Scene {
       }
       actor.root.setPosition(actor.shownX, actor.shownY);
       actor.sprite.setFlipX(target.facing < 0);
-      const anim = `${target.walking ? "walk" : "idle"}${target.color === 0 ? "0" : "1"}`;
+      const anim = `${target.walking ? "walk" : "idle"}${target.color % 2 === 0 ? "0" : "1"}`;
       actor.sprite.anims.play(anim, true);
     }
     this.drawHighlights();
@@ -210,8 +218,13 @@ export class ShipScene extends Phaser.Scene {
       const s = SECTIONS[id];
       const mine = id === this.mine;
       const hot = id === this.hover;
-      if (!mine && !hot) continue;
       const top = s.hitY0;
+      const crack = this.cracks[SECTION_IDS.indexOf(id)] ?? 100;
+      if (crack < 80) {
+        g.fillStyle(0xc45a32, crack < 30 ? 0.38 : 0.18);
+        g.fillRect(s.x0, top, s.x1 - s.x0, s.y1 - top);
+      }
+      if (!mine && !hot) continue;
       g.fillStyle(mine ? 0xe6c36a : 0xc45a32, mine ? 0.12 * pulse + 0.05 : 0.1);
       g.fillRect(s.x0, top, s.x1 - s.x0, s.y1 - top);
       g.lineStyle(mine ? 5 : 3, mine ? 0xe6c36a : 0xd7c4a0, mine ? 0.85 : 0.45);

@@ -47,8 +47,10 @@ describe("two clients, one ship", () => {
       assert.equal(stateB.players.get(roomA.sessionId)?.name, "Aada");
       assert.equal(stateA.players.get(roomB.sessionId)?.name, "Pekka");
 
-      const full = new Client(url);
-      await assert.rejects(full.joinById(roomA.roomId, { name: "Liikaa" }, ShipState));
+      const liisa = new Client(url);
+      const roomC = await liisa.joinById(roomA.roomId, { name: "Liisa" }, ShipState);
+      await waitFor(() => stateA.players.size === 3, "third pirate");
+      await roomC.leave();
 
       roomA.send("go", { section: "reaktori" });
       roomB.send("go", { section: "aseet" });
