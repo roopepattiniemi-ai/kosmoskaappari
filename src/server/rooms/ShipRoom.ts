@@ -3,10 +3,10 @@ import { isEnergySystem, isTetrisCmd, sanitizeName, type GameEvent } from "../..
 import { ShipSim } from "../game/ShipSim.js";
 import { ShipState } from "../schema.js";
 
-const NAMES = ["Kapteeni", "Kansimies"];
+const NAMES = ["Kapteeni", "Kansimies", "Tykkimies", "Korjaaja", "Tähystäjä"];
 
 export class ShipRoom extends Room<{ state: ShipState }> {
-  maxClients = 2;
+  maxClients = 5;
   state = new ShipState();
   private sim!: ShipSim;
 
@@ -37,6 +37,19 @@ export class ShipRoom extends Room<{ state: ShipState }> {
       void client;
       const system = String(message?.system ?? "");
       if (isEnergySystem(system)) this.sim.alloc(system, Number(message?.delta));
+    });
+    this.onMessage("shield", (client, message: { lane?: number }) => {
+      this.sim.shieldTap(client.sessionId, Number(message?.lane));
+    });
+    this.onMessage("helm", (client, message: { dir?: number; lock?: boolean }) => {
+      if (message?.lock) this.sim.helmLock(client.sessionId);
+      else this.sim.helmNudge(client.sessionId, Number(message?.dir));
+    });
+    this.onMessage("repair", (client, message: { index?: number }) => {
+      this.sim.repairTap(client.sessionId, Number(message?.index));
+    });
+    this.onMessage("sensors", (client) => {
+      this.sim.sensorTap(client.sessionId);
     });
     this.onMessage("restart", () => {
       this.sim.restart();

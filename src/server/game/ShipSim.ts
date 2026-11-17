@@ -20,6 +20,16 @@ import {
   gravityInterval,
 } from "../../shared/balance.js";
 import { playerShotDamage, resolveEnemyShot } from "../../shared/combat.js";
+import {
+  compartmentFactor,
+  formatIntegrity,
+  helmScore,
+  parseIntegrity,
+  sectionIndex,
+  sensorLocked,
+  shieldCaught,
+  SHIELD_CATCH,
+} from "../../shared/stations.js";
 import { decodeBoard, encodeBoard, findMove, generateBoard, trySwap } from "../../shared/match3.js";
 import type { GameEvent, TetrisCmd } from "../../shared/protocol.js";
 import { mulberry32, type Rng } from "../../shared/rng.js";
@@ -28,6 +38,7 @@ import {
   buildPath,
   deckFromPosition,
   isSectionId,
+  SECTIONS,
   standPoint,
   type Waypoint,
 } from "../../shared/sections.js";
@@ -51,7 +62,8 @@ import {
 } from "../../shared/tetris.js";
 import { PlayerState, type ShipState } from "../schema.js";
 
-const FALLBACK_NAMES = ["Kapteeni", "Kansimies"];
+const FALLBACK_NAMES = ["Kapteeni", "Kansimies", "Tykkimies", "Korjaaja", "Tähystäjä"];
+const HOMES: SectionId[] = ["ohjaus", "korjaamo", "suojakilpi", "reaktori", "aseet"];
 
 /**
  * Authoritative ship. The Colyseus room holds the schema; this class mutates it
@@ -94,7 +106,7 @@ export class ShipSim {
   join(id: string, name: string): void {
     if (this.state.players.has(id)) return;
     const color = this.firstFreeColor();
-    const home: SectionId = color === 0 ? "ohjaus" : "korjaamo";
+    const home = HOMES[color] ?? "ohjaus";
     const spot = standPoint(home, color);
     const player = new PlayerState({
       name: name || FALLBACK_NAMES[color] || "Merirosvo",
@@ -137,7 +149,7 @@ export class ShipSim {
     this.paths.delete(id);
   }
 
-  alloc(system: "weapons" | "shield" | "engines", delta: number): void {
+  alloc(system: "weapons" | "shield" | "engines" | "repair" | "sensors", delta: number): void {
     if ((delta !== 1 && delta !== -1) || this.state.battle.phase !== "battle") return;
     const energy = this.state.energy;
     const current = energy[system];
@@ -251,6 +263,7 @@ export class ShipSim {
     if (!this.reactorManned()) this.addCharge(REACTOR_AUTO_CHARGE * dt);
 
     events.push(...this.stepWeapons(dt));
+    this.stepStations(dt);
     events.push(...this.stepCombat(dt));
     this.repair(dt);
     this.syncPerformance();
@@ -293,6 +306,22 @@ export class ShipSim {
     this.bag = new Bag(this.rng);
     this.state.reactor.board = encodeBoard(generateBoard(this.rng));
     this.state.weapons.flash = "";
+    const stations = this.state.stations;
+    stations.hulls = formatIntegrity([]);
+    stations.shieldLane = 1;
+    stations.shieldT = 0;
+    stations.shieldCharge = 40;
+    stations.helmTarget = 2;
+    stations.helmPos = 2;
+    stations.helmT = 2.4;
+    stations.dodgeCharge = 40;
+    stations.spark = 0;
+    stations.sparkT = 2.2;
+    stations.blip = 3;
+    stations.sweep = 0;
+    stations.revealed = false;
+    stations.weak = 0;
+    stations.target = Math.floor(this.rng() * 6);
     this.refreshHint();
     this.syncWeapons();
     this.pushLog(
@@ -303,11 +332,10 @@ export class ShipSim {
   }
 
   private firstFreeColor(): number {
-    let used0 = false;
-    this.state.players.forEach((player) => {
-      if (player.color === 0) used0 = true;
-    });
-    return used0 ? 1 : 0;
+    const used = new Set<number>();
+    this.state.players.forEach((player) => used.add(player.color));
+    for (let color = 0; color < 5; color++) if (!used.has(color)) return color;
+    return 0;
   }
 
   private moveCrew(dt: number): void {
@@ -508,6 +536,147 @@ export class ShipSim {
     this.ammo.push(token);
   }
 
+  shieldTap(id: string, lane: number): void {
+    if (!this.at(id, "suojakilpi") || !Number.isInteger(lane)) return;
+    const stations = this.state.stations;
+    if (shieldCaught(stations.shieldT, lane, stations.shieldLane)) {
+      stations.shieldCharge = Math.min(100, stations.shieldCharge + SHIELD_CATCH);
+      stations.shieldT = 0;
+      stations.shieldLane = Math.floor(this.rng() * 3);
+      this.pushLog("Kilpi nappasi kipinän");
+    } else if (stations.shieldT >= 0.58) {
+      stations.shieldT = 0;
+      stations.shieldLane = Math.floor(this.rng() * 3);
+      this.pushLog("Kipinä meni ohi");
+    }
+  }
+
+  helmNudge(id: string, dir: number): void {
+    if (!this.at(id, "ohjaus") || (dir !== -1 && dir !== 1)) return;
+    const stations = this.state.stations;
+    stations.helmPos = Math.max(0, Math.min(4, stations.helmPos + dir));
+  }
+
+  helmLock(id: string): void {
+    if (!this.at(id, "ohjaus")) return;
+    this.resolveHelm();
+  }
+
+  repairTap(id: string, index: number): void {
+    if (!this.at(id, "korjaamo") || !Number.isInteger(index) || index < 0 || index > 5) return;
+    const stations = this.state.stations;
+    if (index !== stations.spark) {
+      this.pushLog("Väärä kipinä");
+      return;
+    }
+    const cracks = this.cracks();
+    cracks[index] = Math.min(100, (cracks[index] ?? 0) + 24);
+    this.writeCracks(cracks);
+    const battle = this.state.battle;
+    battle.playerHull = Math.min(battle.playerMax, battle.playerHull + 4);
+    stations.sparkT = 2.2;
+    stations.spark = this.worstCrack();
+    this.pushLog("Osuma paikattu");
+  }
+
+  sensorTap(id: string): void {
+    if (!this.at(id, "sensorit")) return;
+    const stations = this.state.stations;
+    if (!sensorLocked(stations.sweep, stations.blip)) {
+      this.pushLog("Taajuus hukassa");
+      return;
+    }
+    stations.revealed = true;
+    stations.weak = Math.min(2, stations.weak + 1);
+    stations.blip = Math.floor(this.rng() * 8);
+    stations.sweep = 0;
+    const name = this.targetName();
+    this.pushLog(`Lukitus: seuraava isku → ${name}`);
+  }
+
+  private at(id: string, section: SectionId): boolean {
+    const player = this.state.players.get(id);
+    return !!player && !player.walking && player.section === section && this.state.battle.phase === "battle";
+  }
+
+  private cracks(): number[] {
+    return parseIntegrity(this.state.stations.hulls);
+  }
+
+  private writeCracks(values: number[]): void {
+    this.state.stations.hulls = formatIntegrity(values);
+  }
+
+  private worstCrack(): number {
+    const cracks = this.cracks();
+    let index = 0;
+    for (let i = 1; i < cracks.length; i++) if ((cracks[i] ?? 100) < (cracks[index] ?? 100)) index = i;
+    return index;
+  }
+
+  private targetName(): string {
+    const id = (["reaktori", "aseet", "sensorit", "ohjaus", "korjaamo", "suojakilpi"] as const)[this.state.stations.target];
+    return id ? SECTIONS[id].name : "Aseet";
+  }
+
+  private approach(current: number, target: number, dt: number): number {
+    return current + (target - current) * Math.min(1, dt * 0.45);
+  }
+
+  private stepStations(dt: number): void {
+    const stations = this.state.stations;
+    if (this.manned("suojakilpi")) {
+      stations.shieldT += dt / 1.65;
+      stations.shieldCharge = Math.max(0, stations.shieldCharge - dt * 1.1);
+      if (stations.shieldT >= 1) {
+        stations.shieldT = 0;
+        stations.shieldLane = Math.floor(this.rng() * 3);
+      }
+    } else {
+      stations.shieldCharge = this.approach(stations.shieldCharge, 40, dt);
+      stations.shieldT = 0;
+    }
+
+    if (this.manned("ohjaus")) {
+      stations.helmT -= dt;
+      stations.dodgeCharge = Math.max(0, stations.dodgeCharge - dt * 1.1);
+      if (stations.helmT <= 0) this.resolveHelm();
+    } else {
+      stations.dodgeCharge = this.approach(stations.dodgeCharge, 40, dt);
+    }
+
+    if (this.manned("korjaamo")) {
+      stations.sparkT -= dt;
+      if (stations.sparkT <= 0) {
+        stations.sparkT = 2.2;
+        stations.spark = this.worstCrack();
+      }
+    } else {
+      const cracks = this.cracks();
+      const index = this.worstCrack();
+      cracks[index] = Math.min(100, (cracks[index] ?? 0) + 3.2 * dt);
+      this.writeCracks(cracks);
+      stations.spark = index;
+    }
+
+    if (this.manned("sensorit")) {
+      stations.sweep = (stations.sweep + dt * 1.35) % 8;
+    }
+  }
+
+  private resolveHelm(): void {
+    const stations = this.state.stations;
+    const score = helmScore(stations.helmPos, stations.helmTarget);
+    if (score > 0) {
+      stations.dodgeCharge = Math.min(100, stations.dodgeCharge + 16 * score);
+      this.pushLog(score === 1 ? "Ruori lukossa" : "Lähellä merkkiä");
+    } else {
+      this.pushLog("Ruori harassa");
+    }
+    stations.helmTarget = Math.floor(this.rng() * 5);
+    stations.helmT = 2.4;
+  }
+
   private stepCombat(dt: number): GameEvent[] {
     const events: GameEvent[] = [];
     const battle = this.state.battle;
@@ -525,14 +694,22 @@ export class ShipSim {
         const token = this.ammo.shift() ?? "1";
         const fromAuto = token === "a";
         const power = fromAuto ? 1 : Number(token) || 1;
-        const damage = playerShotDamage({
+        const cracks = this.cracks();
+        let damage = playerShotDamage({
           power,
           weaponsBars: bars,
-          sensorsManned: this.manned("sensorit"),
+          sensorsManned: this.manned("sensorit") || this.state.stations.weak > 0,
           fromAuto,
         });
+        damage *= compartmentFactor(cracks[sectionIndex("aseet")] ?? 100);
+        let weakTag = "";
+        if (!fromAuto && this.state.stations.weak > 0) {
+          damage *= 1.4;
+          this.state.stations.weak -= 1;
+          weakTag = "Heikko kohta! ";
+        }
         battle.enemyHull = Math.max(0, battle.enemyHull - damage);
-        this.pushLog(`Laukaus −${Math.max(1, Math.round(damage))} viholliseen`);
+        this.pushLog(`${weakTag}Laukaus −${Math.max(1, Math.round(damage))} viholliseen`);
         events.push({ type: "fx", kind: "laser-me", amount: damage });
         if (battle.enemyHull <= 0) {
           battle.phase = "victory";
@@ -549,11 +726,14 @@ export class ShipSim {
     let guard = 0;
     while (battle.enemyIn <= 0 && battle.phase === "battle" && guard++ < 6) {
       battle.enemyIn += ENEMY_INTERVAL;
+      const cracks = this.cracks();
+      const shieldPower = (this.state.stations.shieldCharge / 100) * compartmentFactor(cracks[sectionIndex("suojakilpi")] ?? 100);
+      const dodgePower = (this.state.stations.dodgeCharge / 100) * compartmentFactor(cracks[sectionIndex("ohjaus")] ?? 100);
       const shot = resolveEnemyShot({
         shieldBars: this.state.energy.shield,
-        shieldManned: this.manned("suojakilpi"),
+        shieldManned: shieldPower >= 0.62,
         enginesBars: this.state.energy.engines,
-        helmManned: this.manned("ohjaus"),
+        helmManned: dodgePower >= 0.62,
         roll: this.rng(),
       });
       if (shot.dodged) {
@@ -567,7 +747,14 @@ export class ShipSim {
         continue;
       }
       battle.playerHull = Math.max(0, battle.playerHull - shot.damage);
-      this.pushLog(`Osuma runkoon −${Math.max(1, Math.round(shot.damage))}`);
+      const hitIndex = this.state.stations.target % 6;
+      cracks[hitIndex] = Math.max(0, (cracks[hitIndex] ?? 100) - 16);
+      this.writeCracks(cracks);
+      this.state.stations.revealed = false;
+      this.state.stations.target = Math.floor(this.rng() * 6);
+      const roomId = (["reaktori", "aseet", "sensorit", "ohjaus", "korjaamo", "suojakilpi"] as const)[hitIndex];
+      const roomName = roomId ? SECTIONS[roomId].name : "Runko";
+      this.pushLog(`Osuma ${roomName} −${Math.max(1, Math.round(shot.damage))}`);
       events.push({
         type: "fx",
         kind: shot.blocked > 1 ? "shield" : "laser-them",
@@ -586,7 +773,7 @@ export class ShipSim {
   private repair(dt: number): void {
     const battle = this.state.battle;
     if (battle.phase !== "battle" || battle.playerHull <= 0) return;
-    const rate = this.manned("korjaamo") ? REPAIR_MANNED : REPAIR_AUTO;
+    const rate = this.manned("korjaamo") ? 0.08 : REPAIR_AUTO;
     if (battle.playerHull < battle.playerMax) {
       battle.playerHull = Math.min(battle.playerMax, battle.playerHull + rate * dt);
     }

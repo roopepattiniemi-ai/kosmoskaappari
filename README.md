@@ -1,8 +1,15 @@
-# Kosmoskaappari v0.1
+# Kosmoskaappari v0.2
 
-Kahden pelaajan avaruusmerirosvojen yhteispeli selaimessa. Miehistö jakaa yhden aluksen: reaktorin match-3 tuottaa energiaa, asehuoneen Tetris lataa ammuksia, ja energia jaetaan aseiden, kilven ja moottorien kesken. Yksi taistelu tekoälyalusta vastaan.
+Enintään viiden pelaajan avaruusmerirosvojen yhteispeli selaimessa. Miehistö jakaa yhden aluksen. Jokainen kuudesta asemasta on oma pulma:
 
-Vain **reaktori** ja **aseet** ovat pelattavia. Ohjaus, korjaamo, kilpi ja sensorit ovat paikkoja, joissa seisominen nostaa järjestelmän tehon. Tyhjä asema käy automaattisesti noin 40 % teholla.
+- Reaktori: match-3, tuottaa energiaa.
+- Aseet: Tetris, lataa ja ampuu.
+- Kilpi: nappaa kipinä, vähentää osuman vahinkoa.
+- Ohjaus: lukitse ruori, väistää iskuja.
+- Korjaamo: sammuta kipinä, korjaa osastoa ja runkoa.
+- Sensorit: lukitse pyyhkäisy, paljastaa seuraavan iskun ja heikon kohdan.
+
+Energia jaetaan järjestelmille. Tyhjä asema käy noin 40 % teholla. Vihollisen osumat rikkovat osastoja. Taistelulla on voitto ja häviö.
 
 ## Paikallisesti
 

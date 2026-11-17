@@ -22,6 +22,8 @@ export const AUTO_AMMO_EVERY = 6.8;
 export const FIRE_INTERVAL = 1.15;
 export const AMMO_CAP = 8;
 
+export const MAX_CREW = 5;
+
 export const START_PIPS = 4;
 export const MAX_PIPS = 8;
 export const SYSTEM_CAP = 4;

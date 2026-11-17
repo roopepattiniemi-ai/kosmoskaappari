@@ -125,5 +125,66 @@ describe("ship simulation", () => {
     sim.tick(0.05);
     assert.ok(sim.state.battle.logSeq !== seq);
     assert.ok(sim.state.battle.playerHull < 100);
+    assert.ok(sim.state.stations.hulls.split(",").some((value) => Number(value) < 100));
+  });
+
+  it("gives five pirates distinct colours and homes", () => {
+    const sim = new ShipSim(new ShipState(), 3);
+    sim.start();
+    for (const id of ["a", "b", "c", "d", "e"]) sim.join(id, id);
+    const colors = new Set<number>();
+    sim.state.players.forEach((player) => colors.add(player.color));
+    assert.equal(colors.size, 5);
+    assert.equal(sim.state.players.get("a")?.section, "ohjaus");
+    assert.equal(sim.state.players.get("e")?.section, "aseet");
+  });
+
+  it("charges the shield only when the spark is caught", () => {
+    const sim = boot();
+    sim.place("a", "suojakilpi");
+    sim.state.stations.shieldLane = 2;
+    sim.state.stations.shieldT = 0.8;
+    sim.state.stations.shieldCharge = 10;
+    sim.shieldTap("a", 0);
+    assert.ok(sim.state.stations.shieldCharge <= 10);
+    sim.state.stations.shieldLane = 2;
+    sim.state.stations.shieldT = 0.8;
+    sim.shieldTap("a", 2);
+    assert.ok(sim.state.stations.shieldCharge > 10);
+  });
+
+  it("locks the helm onto the mark and patches the sparking compartment", () => {
+    const sim = boot();
+    sim.place("a", "ohjaus");
+    sim.state.stations.helmTarget = 4;
+    sim.state.stations.helmPos = 4;
+    sim.state.stations.dodgeCharge = 10;
+    sim.helmLock("a");
+    assert.ok(sim.state.stations.dodgeCharge > 10);
+
+    sim.place("a", "korjaamo");
+    sim.state.stations.hulls = "40,100,100,100,100,100";
+    sim.state.stations.spark = 0;
+    const hull = sim.state.battle.playerHull;
+    sim.repairTap("a", 0);
+    assert.ok(Number(sim.state.stations.hulls.split(",")[0]) > 40);
+    assert.ok(sim.state.battle.playerHull >= hull);
+    sim.repairTap("a", 3);
+    assert.match(sim.state.battle.log, /Väärä/);
+  });
+
+  it("reveals the next strike when the sensor sweep is on the blip", () => {
+    const sim = boot();
+    sim.place("a", "sensorit");
+    sim.state.stations.blip = 2;
+    sim.state.stations.sweep = 2.1;
+    sim.state.stations.revealed = false;
+    sim.sensorTap("a");
+    assert.equal(sim.state.stations.revealed, true);
+    assert.ok(sim.state.stations.weak > 0);
+    sim.state.stations.sweep = 6;
+    sim.state.stations.revealed = false;
+    sim.sensorTap("a");
+    assert.equal(sim.state.stations.revealed, false);
   });
 });
