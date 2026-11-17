@@ -9,14 +9,14 @@ export type GameEvent =
   | { type: "fx"; kind: FxKind; amount: number };
 
 export type TetrisCmd = "left" | "right" | "rot" | "soft" | "hard";
-export type EnergySystem = "weapons" | "shield" | "engines";
+export type EnergySystem = "weapons" | "shield" | "engines" | "repair" | "sensors";
 
 export function isTetrisCmd(value: string): value is TetrisCmd {
   return value === "left" || value === "right" || value === "rot" || value === "soft" || value === "hard";
 }
 
 export function isEnergySystem(value: string): value is EnergySystem {
-  return value === "weapons" || value === "shield" || value === "engines";
+  return value === "weapons" || value === "shield" || value === "engines" || value === "repair" || value === "sensors";
 }
 
 export function sanitizeName(raw: unknown, fallback: string): string {

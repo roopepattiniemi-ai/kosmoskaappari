@@ -30,8 +30,7 @@ export interface SectionDef {
   /** Where the arch meets the wall. Highlights and taps use this so the spire stays clear. */
   hitY0: number;
   floorY: number;
-  /** Puzzle available in v0.1. */
-  playable: "reactor" | "weapons" | null;
+  playable: "reactor" | "weapons" | "shield" | "helm" | "repair" | "sensors";
   blurb: string;
   effect: string;
 }
@@ -88,30 +87,30 @@ export const SECTIONS: Record<SectionId, SectionDef> = {
   sensorit: room(
     "sensorit",
     "Sensorit",
-    null,
-    "Tähtäyspulpetti. Minipeli tulee myöhemmin.",
-    "Miehitettynä tähtäys vahvistaa jokaista laukausta. Tyhjänä teho on 40 %.",
+    "sensors",
+    "Lukitse pyyhkäisy merkin kohdalle. Näet seuraavan iskun ja heikon kohdan.",
+    "Lukitus paljastaa, mihin osastoon vihollinen ampuu, ja vahvistaa seuraavan laukauksen.",
   ),
   ohjaus: room(
     "ohjaus",
     "Ohjaus",
-    null,
-    "Ruori on ammeessa. Minipeli tulee myöhemmin.",
-    "Miehitettynä moottorit väistävät täydellä teholla. Tyhjänä väistö on 40 %.",
+    "helm",
+    "Siirrä ruori merkin kohdalle ja lukitse ennen kuin kynttilä sammuu.",
+    "Onnistunut lukitus kasvattaa väistöä. Tyhjänä ohjaus pysyy noin 40 % teholla.",
   ),
   korjaamo: room(
     "korjaamo",
     "Korjaamo",
-    null,
-    "Paja ja työkalut. Minipeli tulee myöhemmin.",
-    "Miehitettynä runko korjaantuu nopeammin. Tyhjänä korjaus on 40 %.",
+    "repair",
+    "Sammuta kipinä vaurioituneesta osastosta. Se korjaa osaston ja runkoa.",
+    "Kipinän sammutus paikataan osastoa ja runkoa. Tyhjä paja korjaa hitaasti.",
   ),
   suojakilpi: room(
     "suojakilpi",
     "Kilpi",
-    null,
-    "Suojakentän sydän. Minipeli tulee myöhemmin.",
-    "Miehitettynä kilpi imee iskuja täydellä teholla. Tyhjänä teho on 40 %.",
+    "shield",
+    "Nappaa putoava kipinä oikeasta kaaresta, kun se on lähellä pohjaa.",
+    "Napattu kipinä lataa kilpeä. Tyhjä kilpihuone pitää varauksen noin 40 %:ssa.",
   ),
 };
 
@@ -136,7 +135,7 @@ export function isSectionId(value: string): value is SectionId {
 export function standPoint(id: SectionId, slot: number): { x: number; y: number } {
   const s = SECTIONS[id];
   const cx = (s.x0 + s.x1) / 2;
-  const x = Math.max(s.x0 + 52, Math.min(s.x1 - 52, cx + (slot % 2 === 0 ? -34 : 36)));
+  const x = Math.max(s.x0 + 40, Math.min(s.x1 - 40, cx + (slot - 2) * 28));
   return { x, y: s.floorY };
 }
 
