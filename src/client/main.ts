@@ -3,6 +3,9 @@ import { Client, type Room } from "@colyseus/sdk";
 import { copy } from "../shared/copy.js";
 import { PIP_COST } from "../shared/balance.js";
 import type { GameEvent } from "../shared/protocol.js";
+import { parseMounts, parseSystems } from "../shared/hardpoints.js";
+import { musicTrack } from "../shared/music.js";
+import { parseMap } from "../shared/run.js";
 import { parseIntegrity } from "../shared/stations.js";
 import { SECTION_IDS, SECTIONS, isSectionId, type SectionId } from "../shared/sections.js";
 import { ShipState } from "../server/schema.js";
@@ -10,6 +13,7 @@ import { sfx } from "./audio.js";
 import { bridge } from "./bridge.js";
 import { ShipScene } from "./game/ShipScene.js";
 import { PuzzleController } from "./ui/puzzle.js";
+import { mountRun, renderRun } from "./ui/runview.js";
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
@@ -27,6 +31,8 @@ let scene: ShipScene | null = null;
 let lastLog = -1;
 let lastPhase = "";
 let puzzle: PuzzleController;
+let prevState: { fuel: number; crystals: number; node: number; hull: number; levels: string; alarmed: boolean } | null = null;
+let lastStep = 0;
 
 const SYSTEMS = [
   ["weapons", copy.weapons],
@@ -100,6 +106,8 @@ function render(state: ShipState): void {
   setBar("enemy-bar", battle.enemyHull / battle.enemyMax);
   $("hull-num").textContent = String(Math.ceil(battle.playerHull));
   $("enemy-num").textContent = String(Math.ceil(battle.enemyHull));
+  setBar("bubble-bar", battle.enemyShieldMax > 0 ? battle.enemyShield / battle.enemyShieldMax : 0);
+  $("stash").textContent = `Polttoaine ${state.run.fuel} · Kiteet ${state.run.crystals}`;
   const timer = $("enemy-timer");
   const strike = state.stations.revealed
     ? SECTIONS[SECTION_IDS[state.stations.target] ?? "aseet"].name
@@ -110,7 +118,7 @@ function render(state: ShipState): void {
   timer.classList.toggle("soon", battle.phase === "battle" && battle.enemyIn < 1.6);
 
   const energy = state.energy;
-  const used = energy.weapons + energy.shield + energy.engines;
+  const used = energy.weapons + energy.shield + energy.engines + energy.repair + energy.sensors;
   for (const [key] of SYSTEMS) {
     const row = document.querySelector<HTMLElement>(`.sys[data-sys="${key}"]`);
     if (!row) continue;
@@ -128,8 +136,11 @@ function render(state: ShipState): void {
     alertEl.classList.remove("pop", "bad", "good", "warn");
     void alertEl.offsetWidth;
     alertEl.classList.add("pop");
-    if (/Osuma|petti|hajosi|tukossa/.test(battle.log)) alertEl.classList.add("bad");
-    else if (/Laukaus|Energiaa|Väist|Kilpi|Voitto|upposi|Linja|TETRIS|Ketju|Pommi/.test(battle.log)) alertEl.classList.add("good");
+    if (/Osuma|petti|hajosi|tukossa|eivät riitä|loppu/.test(battle.log)) alertEl.classList.add("bad");
+    else if (/Laukaus|Energiaa|Väist|Kilpi|Voitto|upposi|Linja|TETRIS|Ketju|Pommi|Saalis|päivitetty|paikattu|Hyppy|Kauppa/.test(battle.log)) alertEl.classList.add("good");
+    if (/nappasi|lukossa|Lähellä|Lukitus/.test(battle.log)) sfx.match();
+    if (/ohi|hukassa|harassa|Väärä/.test(battle.log)) sfx.bad();
+    if (/paikattu/.test(battle.log)) sfx.repair();
   }
 
   const names: string[] = [];
@@ -152,6 +163,14 @@ function render(state: ShipState): void {
     : copy.tapShip;
 
   scene?.setCracks(parseIntegrity(state.stations.hulls));
+  scene?.setCombat(
+    parseMounts(state.run.mounts),
+    state.weapons.charges.split(",").map((value) => Number(value) || 0),
+    parseSystems(state.battle.enemySys),
+    state.battle.enemyShield,
+    state.battle.enemyShieldMax,
+    state.battle.aim,
+  );
   if (scene) {
     const crew = new Map<string, { x: number; y: number; walking: boolean; facing: number; color: number; name: string }>();
     state.players.forEach((player, id) => {
@@ -167,16 +186,44 @@ function render(state: ShipState): void {
     scene.setCrew(crew);
   }
 
+  const screen = state.run.screen;
+  const over = battle.phase === "victory" || battle.phase === "defeat";
+  endEl.classList.toggle("hidden", !over);
+  const restart = $<HTMLButtonElement>("restart");
+  if (over) {
+    const wonRun = screen === "won" || battle.phase === "defeat";
+    $("end-title").textContent = battle.phase === "victory" ? (screen === "won" ? "Kierros voitettu" : copy.victoryTitle) : copy.defeatTitle;
+    $("end-body").textContent = battle.phase === "victory"
+      ? (screen === "won" ? "Viimeinen pomo kaatui. Saalis on teidän." : "Saalis on ruumassa. Kartta odottaa.")
+      : "Runko petti. Kierros päättyi.";
+    restart.textContent = wonRun ? "Uusi kierros" : "Kartalle";
+    restart.dataset.mode = wonRun ? "restart" : "continue";
+  }
   if (battle.phase !== lastPhase) {
     const prev = lastPhase;
     lastPhase = battle.phase;
-    const over = battle.phase === "victory" || battle.phase === "defeat";
-    endEl.classList.toggle("hidden", !over);
-    if (over) {
-      $("end-title").textContent = battle.phase === "victory" ? copy.victoryTitle : copy.defeatTitle;
-      $("end-body").textContent = battle.phase === "victory" ? copy.victoryBody : copy.defeatBody;
-      if (prev && prev !== battle.phase) (battle.phase === "victory" ? sfx.win : sfx.lose)();
+    if (over && prev && prev !== battle.phase) (battle.phase === "victory" ? sfx.win : sfx.lose)();
+  }
+  renderRun($("run"), state);
+  const node = parseMap(state.run.map).find((item) => item.id === state.run.node);
+  sfx.musicTrack(musicTrack({ inGame: true, phase: battle.phase, screen, boss: node?.type === "boss" }));
+  const levels = [state.run.reactor, state.run.weapons, state.run.shield, state.run.helm, state.run.repair, state.run.sensors].join(",");
+  if (prevState) {
+    if (state.run.node !== prevState.node && state.run.fuel < prevState.fuel) sfx.jump();
+    if (state.run.crystals > prevState.crystals) sfx.crystal();
+    else if (state.run.crystals < prevState.crystals) {
+      if (levels !== prevState.levels) sfx.upgrade();
+      else if (battle.playerHull > prevState.hull + 0.5) sfx.repair();
+      else sfx.buy();
     }
+  }
+  const low = battle.phase === "battle" && battle.playerHull / battle.playerMax < 0.3;
+  if (low && !prevState?.alarmed) sfx.alarm();
+  prevState = { fuel: state.run.fuel, crystals: state.run.crystals, node: state.run.node, hull: battle.playerHull, levels, alarmed: low && battle.phase === "battle" };
+  const meNow = state.players.get(room?.sessionId ?? "");
+  if (meNow?.walking && performance.now() - lastStep > 520) {
+    lastStep = performance.now();
+    sfx.step();
   }
 }
 
@@ -231,11 +278,20 @@ async function connect(mode: "create" | "join"): Promise<void> {
   joined.onMessage("reactor", (message: Extract<GameEvent, { type: "reactor" }>) => puzzle.onReactor(message));
   joined.onMessage("clear", (message: Extract<GameEvent, { type: "clear" }>) => puzzle.onClear(message));
   joined.onMessage("fx", (message: Extract<GameEvent, { type: "fx" }>) => {
-    scene?.playFx(message.kind, message.amount);
-    if (message.kind === "laser-me" || message.kind === "laser-them") sfx.laser();
+    scene?.playFx(message.kind, message.amount, message.slot ?? 0, message.system ?? 0);
+    if (message.kind === "laser-me") {
+      const level = parseMounts((joined.state as ShipState).run.mounts)[message.slot ?? 0] ?? 1;
+      if (level >= 2) sfx.cannon();
+      else sfx.laser();
+      if ((message.blocked ?? 0) > 0.4) sfx.shield();
+      if (message.amount > 0.4) sfx.hit();
+    }
+    if (message.kind === "laser-them") {
+      sfx.cannon();
+      sfx.hit();
+    }
     if (message.kind === "boom") sfx.boom();
     if (message.kind === "shield") sfx.shield();
-    if (message.kind === "dodge") sfx.rotate();
     if (message.amount >= 12) gameEl.classList.add("shake");
   });
   joined.onDrop(() => {
@@ -251,6 +307,8 @@ async function connect(mode: "create" | "join"): Promise<void> {
     lobby.classList.remove("hidden");
     lobbyStatus.textContent = copy.left;
     room = null;
+    prevState = null;
+    sfx.musicTrack("valikko");
   });
   render(joined.state as ShipState);
 }
@@ -278,7 +336,8 @@ $("create").addEventListener("click", () => void connect("create"));
 $("join").addEventListener("click", () => void connect("join"));
 $("restart").addEventListener("click", () => {
   sfx.tap();
-  room?.send("restart");
+  if ($<HTMLButtonElement>("restart").dataset.mode === "continue") room?.send("continue");
+  else room?.send("restart");
 });
 $("share").addEventListener("click", async () => {
   const url = room ? shareUrl(room.roomId) : location.href;
@@ -293,13 +352,41 @@ $("share").addEventListener("click", async () => {
     $("share").textContent = copy.share;
   }, 1600);
 });
-$("mute").addEventListener("click", () => {
-  const off = sfx.toggle();
-  $("mute").textContent = off ? copy.soundOn : copy.soundOff;
+document.querySelectorAll<HTMLButtonElement>(".mute-btn").forEach((button) => {
+  button.addEventListener("click", () => {
+    const off = sfx.toggle();
+    document.querySelectorAll(".mute-btn").forEach((node) => {
+      node.textContent = off ? "Äänet päälle" : "Mykistä";
+    });
+  });
 });
-$("mute").textContent = sfx.muted ? copy.soundOn : copy.soundOff;
+document.querySelectorAll(".mute-btn").forEach((node) => {
+  node.textContent = sfx.muted ? "Äänet päälle" : "Mykistä";
+});
+document.querySelectorAll<HTMLInputElement>(".vol-music").forEach((input) => {
+  input.value = String(Math.round(sfx.music * 100));
+  input.addEventListener("input", () => {
+    const value = Number(input.value) / 100;
+    sfx.setMusic(value);
+    document.querySelectorAll<HTMLInputElement>(".vol-music").forEach((other) => {
+      if (other !== input) other.value = input.value;
+    });
+  });
+});
+document.querySelectorAll<HTMLInputElement>(".vol-sfx").forEach((input) => {
+  input.value = String(Math.round(sfx.effects * 100));
+  input.addEventListener("input", () => {
+    const value = Number(input.value) / 100;
+    sfx.setEffects(value);
+    document.querySelectorAll<HTMLInputElement>(".vol-sfx").forEach((other) => {
+      if (other !== input) other.value = input.value;
+    });
+  });
+});
 
-document.body.addEventListener("pointerdown", () => sfx.unlock(), { once: false });
+document.body.addEventListener("pointerdown", () => sfx.unlock());
+sfx.musicTrack("valikko");
+mountRun($("run"), (type, payload) => room?.send(type, payload));
 window.addEventListener("resize", applyLayout);
 window.addEventListener("orientationchange", applyLayout);
 applyLayout();
@@ -320,6 +407,10 @@ window.addEventListener("keydown", (event) => {
 bridge.onSection = (section) => {
   sfx.tap();
   room?.send("go", { section });
+};
+bridge.onAim = (system) => {
+  sfx.tap();
+  room?.send("aim", { system });
 };
 bridge.onReady = (next) => {
   scene = next as ShipScene;

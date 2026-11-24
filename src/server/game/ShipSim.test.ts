@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { idx } from "../../shared/match3.ts";
+import { parseMap } from "../../shared/run.ts";
 import { FLOOR_Y } from "../../shared/sections.ts";
 import { ShipState } from "../schema.ts";
 import { ShipSim } from "./ShipSim.ts";
@@ -182,9 +183,84 @@ describe("ship simulation", () => {
     sim.sensorTap("a");
     assert.equal(sim.state.stations.revealed, true);
     assert.ok(sim.state.stations.weak > 0);
+    sim.state.stations.blip = 2;
     sim.state.stations.sweep = 6;
     sim.state.stations.revealed = false;
     sim.sensorTap("a");
     assert.equal(sim.state.stations.revealed, false);
+  });
+
+  it("jumps by majority vote, spends fuel and keeps the hull", () => {
+    const sim = boot();
+    const map = parseMap(sim.state.run.map);
+    const dest = map[0]!.next[0]!;
+    sim.state.battle.phase = "explore";
+    sim.state.run.screen = "map";
+    sim.state.run.fuel = 4;
+    sim.vote("a", dest);
+    assert.equal(sim.state.run.node, 0);
+    sim.vote("b", dest);
+    assert.equal(sim.state.run.node, dest);
+    assert.equal(sim.state.run.fuel, 3);
+    sim.state.run.fuel = 0;
+    sim.state.run.node = 0;
+    sim.state.run.screen = "map";
+    sim.state.battle.phase = "explore";
+    sim.state.run.votes = "";
+    const next = parseMap(sim.state.run.map)[0]!.next[0]!;
+    sim.vote("a", next);
+    sim.vote("b", next);
+    assert.equal(sim.state.run.node, 0);
+    assert.match(sim.state.battle.log, /Polttoaine/);
+  });
+
+  it("pays crystals for a weapon upgrade and aims a shot at one system", () => {
+    const sim = boot();
+    sim.state.battle.phase = "explore";
+    sim.state.run.screen = "shop";
+    sim.state.run.crystals = 30;
+    sim.shop("a", "up:weapons");
+    assert.equal(sim.state.run.weapons, 2);
+    assert.equal(sim.state.run.crystals, 22);
+    assert.equal(sim.state.run.mounts, "2,0,0,0");
+    sim.state.battle.phase = "battle";
+    sim.state.run.screen = "battle";
+    sim.aim("a", 2);
+    sim.place("a", "aseet");
+    sim.state.energy.weapons = 3;
+    sim.state.battle.enemySys = "100,0,100,100";
+    sim.state.battle.enemyShield = 30;
+    sim.debugClearBottomRow();
+    sim.tick(1.4);
+    const systems = sim.state.battle.enemySys.split(",").map(Number);
+    assert.ok(systems[2]! < 100);
+    assert.equal(systems[0], 100);
+    assert.ok(sim.state.battle.enemyShield < 30);
+  });
+
+  it("grants crystals on a win, ends the run on a loss, and keeps the hull between nodes", () => {
+    const sim = boot();
+    sim.place("a", "aseet");
+    sim.state.battle.playerHull = 40;
+    sim.state.battle.enemyHull = 1;
+    sim.state.energy.weapons = 3;
+    sim.debugClearBottomRow();
+    sim.tick(1.4);
+    assert.equal(sim.state.battle.phase, "victory");
+    assert.ok(sim.state.run.crystals > 0);
+    const hull = sim.state.battle.playerHull;
+    sim.continueRun();
+    assert.equal(sim.state.battle.phase, "explore");
+    assert.equal(sim.state.run.screen, "map");
+    assert.equal(sim.state.battle.playerHull, hull);
+
+    sim.restart();
+    sim.state.battle.playerHull = 1;
+    sim.state.energy.shield = 0;
+    sim.state.energy.engines = 0;
+    sim.state.battle.enemyIn = 0.01;
+    sim.tick(0.05);
+    assert.equal(sim.state.battle.phase, "defeat");
+    assert.equal(sim.state.run.screen, "over");
   });
 });

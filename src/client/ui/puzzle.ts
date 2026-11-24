@@ -81,6 +81,13 @@ export class PuzzleController {
       this.images.set(index + 1, img);
     });
     this.buildPad();
+    this.head.addEventListener("pointerdown", (event) => {
+      const button = (event.target as HTMLElement).closest<HTMLButtonElement>("[data-aim]");
+      if (!button) return;
+      event.preventDefault();
+      sfx.tap();
+      this.send("aim", { system: Number(button.dataset.aim) });
+    });
     this.ro = new ResizeObserver(() => this.layoutBoard());
     this.ro.observe(this.slot);
     this.raf = requestAnimationFrame(() => this.frame());
@@ -258,6 +265,16 @@ export class PuzzleController {
     const me = this.state?.players.get(this.sessionId);
     if (!me || me.walking) return;
     if (this.stations.key(me.section as SectionId, event)) return;
+    if (me.section === "aseet" && this.state?.battle.phase === "battle") {
+      const aimKey: Record<string, number | undefined> = { q: 0, w: 1, e: 2, r: 3, Q: 0, W: 1, E: 2, R: 3 };
+      const system = aimKey[event.key];
+      if (system !== undefined) {
+        event.preventDefault();
+        this.send("aim", { system });
+        sfx.tap();
+        return;
+      }
+    }
     if (me.section === "aseet") {
       const map: Record<string, TetrisCmd | undefined> = {
         ArrowLeft: "left",
@@ -486,7 +503,15 @@ export class PuzzleController {
     const ammo = bits.length
       ? bits.map((token) => `<i class="${token === "a" ? "pellet auto" : "pellet"}"></i>`).join("")
       : `<em>${escapeHtml(copy.ammo)} 0</em>`;
-    this.head.innerHTML = `<strong>Aseet</strong><span>${escapeHtml(copy.perf(state.weapons.performance))}</span><span class="ammo">${ammo}</span>`;
+    const names = ["Aseet", "Kilpi", "Ohjaus", "Reaktori"];
+    const charges = state.weapons.charges.split(",");
+    const aims = names
+      .map((name, index) => `<button type="button" class="wood tiny${state.battle.aim === index ? " on" : ""}" data-aim="${index}">${name}</button>`)
+      .join("");
+    const bars = charges
+      .map((value) => `<i><b style="width:${Math.max(0, Math.min(100, Number(value) || 0))}%"></b></i>`)
+      .join("");
+    this.head.innerHTML = `<strong>Aseet</strong><span>${escapeHtml(copy.perf(state.weapons.performance))}</span><span class="ammo">${ammo}</span><div class="aim-row">${aims}</div><div class="charge-row">${bars}</div>`;
   }
 
   private renderHint(): void {

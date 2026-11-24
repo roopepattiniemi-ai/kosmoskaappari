@@ -44,10 +44,10 @@ export function helmScore(position: number, target: number): number {
   return 0;
 }
 
-export function sensorLocked(sweep: number, blip: number): boolean {
+export function sensorLocked(sweep: number, blip: number, range = SENSOR_LOCK_RANGE): boolean {
   const span = SENSOR_MARKS;
   const delta = Math.abs((((sweep % span) + span) % span) - blip);
-  return Math.min(delta, span - delta) <= SENSOR_LOCK_RANGE;
+  return Math.min(delta, span - delta) <= range;
 }
 
 export function sectionIndex(id: SectionId): number {

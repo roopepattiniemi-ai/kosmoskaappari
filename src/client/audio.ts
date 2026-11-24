@@ -1,89 +1,193 @@
-let ctx: AudioContext | null = null;
-let muted = localStorage.getItem("kosmos-mute") === "1";
+import { MUSIC_FILES, SFX_FILES, type MusicId, type SfxId } from "../shared/music.js";
 
-function context(): AudioContext | null {
-  if (muted) return null;
-  if (!ctx) {
-    const AC = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-    ctx = new AC();
-  }
-  if (ctx.state === "suspended") void ctx.resume();
-  return ctx;
+const MUSIC_KEY = "kosmos-music";
+const SFX_KEY = "kosmos-sfx";
+const MUTE_KEY = "kosmos-mute";
+
+let musicVol = clampVol(Number(localStorage.getItem(MUSIC_KEY) ?? "0.55"), 0.55);
+let sfxVol = clampVol(Number(localStorage.getItem(SFX_KEY) ?? "0.8"), 0.8);
+let muted = localStorage.getItem(MUTE_KEY) === "1";
+let armed = false;
+let wanted: MusicId = "valikko";
+let playing: MusicId | null = null;
+let from: HTMLAudioElement | null = null;
+let to: HTMLAudioElement | null = null;
+let fade = 1;
+let duckUntil = 0;
+let lastFrame = performance.now();
+
+function clampVol(value: number, fallback: number): number {
+  if (!Number.isFinite(value)) return fallback;
+  return Math.max(0, Math.min(1, value));
 }
 
-function tone(freq: number, dur: number, type: OscillatorType, gain: number, slide = 0): void {
-  const audio = context();
-  if (!audio) return;
-  const osc = audio.createOscillator();
-  const amp = audio.createGain();
-  osc.type = type;
-  osc.frequency.setValueAtTime(freq, audio.currentTime);
-  if (slide) osc.frequency.exponentialRampToValueAtTime(Math.max(40, freq + slide), audio.currentTime + dur);
-  amp.gain.setValueAtTime(gain, audio.currentTime);
-  amp.gain.exponentialRampToValueAtTime(0.0008, audio.currentTime + dur);
-  osc.connect(amp);
-  amp.connect(audio.destination);
-  osc.start();
-  osc.stop(audio.currentTime + dur + 0.02);
+function musicLevel(): number {
+  if (muted) return 0;
+  const ducked = performance.now() < duckUntil ? 0.35 : 1;
+  return musicVol * ducked;
+}
+
+function element(src: string, loop: boolean): HTMLAudioElement {
+  const audio = new Audio(src);
+  audio.loop = loop;
+  audio.preload = "auto";
+  return audio;
+}
+
+function startMusic(id: MusicId): void {
+  if (playing === id && to) {
+    to.volume = musicLevel() * fade;
+    return;
+  }
+  playing = id;
+  const next = element(`/assets/audio/${MUSIC_FILES[id]}`, true);
+  next.volume = 0;
+  from = to;
+  to = next;
+  fade = from ? 0 : 1;
+  if (armed && !muted) void next.play().catch(() => undefined);
+}
+
+function frame(): void {
+  const now = performance.now();
+  const dt = Math.min(80, now - lastFrame);
+  lastFrame = now;
+  if (to && fade < 1) fade = Math.min(1, fade + dt / 1100);
+  const level = musicLevel();
+  if (to) to.volume = level * (from ? fade : 1);
+  if (from) {
+    from.volume = level * (1 - fade);
+    if (fade >= 1) {
+      from.pause();
+      from = null;
+    }
+  }
+  requestAnimationFrame(frame);
+}
+
+requestAnimationFrame(frame);
+
+function cue(id: SfxId): void {
+  if (!armed || muted || sfxVol <= 0) return;
+  const audio = element(`/assets/audio/${SFX_FILES[id]}`, false);
+  audio.volume = sfxVol;
+  void audio.play().catch(() => undefined);
 }
 
 export const sfx = {
   get muted() {
     return muted;
   },
+  get music() {
+    return musicVol;
+  },
+  get effects() {
+    return sfxVol;
+  },
   unlock() {
-    context();
+    if (armed) return;
+    armed = true;
+    startMusic(wanted);
+    if (to && to.paused) void to.play().catch(() => undefined);
+  },
+  musicTrack(id: MusicId) {
+    wanted = id;
+    if (!armed) return;
+    startMusic(id);
+  },
+  setMusic(value: number) {
+    musicVol = clampVol(value, musicVol);
+    localStorage.setItem(MUSIC_KEY, String(musicVol));
+  },
+  setEffects(value: number) {
+    sfxVol = clampVol(value, sfxVol);
+    localStorage.setItem(SFX_KEY, String(sfxVol));
   },
   toggle(): boolean {
     muted = !muted;
-    localStorage.setItem("kosmos-mute", muted ? "1" : "0");
-    if (!muted) context();
+    localStorage.setItem(MUTE_KEY, muted ? "1" : "0");
+    if (muted) {
+      from?.pause();
+      to?.pause();
+    } else if (armed) {
+      startMusic(wanted);
+      if (to) void to.play().catch(() => undefined);
+    }
     return muted;
   },
+  duck(ms = 4000) {
+    duckUntil = performance.now() + ms;
+  },
+  cue,
   tap() {
-    tone(520, 0.05, "square", 0.03);
+    cue("nappi");
   },
   swap() {
-    tone(340, 0.07, "triangle", 0.04);
+    cue("nappi");
   },
   bad() {
-    tone(140, 0.14, "sawtooth", 0.03);
+    cue("pulmaBad");
   },
-  match(cascade: number) {
-    tone(420 + cascade * 90, 0.12, "triangle", 0.05);
-    tone(640 + cascade * 110, 0.16, "sine", 0.03);
+  match() {
+    cue("pulmaOk");
   },
   big() {
-    tone(220, 0.2, "sawtooth", 0.04, 180);
-    tone(480, 0.28, "triangle", 0.04, 200);
+    cue("pulmaOk");
   },
   move() {
-    tone(180, 0.03, "square", 0.02);
+    cue("nappi");
   },
   rotate() {
-    tone(260, 0.06, "square", 0.03, 80);
+    cue("nappi");
   },
   lock() {
-    tone(90, 0.08, "square", 0.04);
+    cue("nappi");
   },
-  line(n: number) {
-    for (let i = 0; i < Math.max(1, n); i++) {
-      setTimeout(() => tone(360 + i * 80, 0.12, "square", 0.04), i * 55);
-    }
+  line() {
+    cue("pulmaOk");
   },
   laser() {
-    tone(880, 0.12, "sawtooth", 0.03, -600);
+    cue("laser");
+  },
+  cannon() {
+    cue("tykki");
+  },
+  hit() {
+    cue("osuma");
   },
   boom() {
-    tone(100, 0.22, "sawtooth", 0.05, -60);
+    cue("rajahdys");
   },
   shield() {
-    tone(620, 0.16, "sine", 0.04, 140);
+    cue("kilpi");
+  },
+  alarm() {
+    cue("halytys");
+  },
+  jump() {
+    cue("hyppy");
+  },
+  crystal() {
+    cue("kristalli");
+  },
+  buy() {
+    cue("osto");
+  },
+  upgrade() {
+    cue("paivitys");
+  },
+  repair() {
+    cue("korjaus");
+  },
+  step() {
+    cue("askel");
   },
   win() {
-    [523, 659, 784, 1046].forEach((f, i) => setTimeout(() => tone(f, 0.18, "triangle", 0.05), i * 120));
+    cue("voitto");
+    this.duck();
   },
   lose() {
-    [392, 311, 233].forEach((f, i) => setTimeout(() => tone(f, 0.22, "triangle", 0.04), i * 160));
+    cue("havio");
+    this.duck();
   },
 };

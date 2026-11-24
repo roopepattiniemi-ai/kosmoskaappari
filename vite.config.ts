@@ -12,6 +12,7 @@ const types: Record<string, string> = {
   ".json": "application/json",
   ".md": "text/markdown; charset=utf-8",
   ".webp": "image/webp",
+  ".mp3": "audio/mpeg",
 };
 
 function serveAssets(): Plugin {
