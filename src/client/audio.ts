@@ -186,6 +186,19 @@ export const sfx = {
     cue("voitto");
     this.duck();
   },
+  board() {
+    cue("abordaa");
+  },
+  blade() {
+    cue("miekka");
+  },
+  parry() {
+    cue("torjunta");
+  },
+  capture() {
+    cue("valtaus");
+    this.duck();
+  },
   lose() {
     cue("havio");
     this.duck();

@@ -146,6 +146,8 @@ function render(state: ShipState): void {
     if (/nappasi|lukossa|Lähellä|Lukitus/.test(battle.log)) sfx.match();
     if (/ohi|hukassa|harassa|Väärä/.test(battle.log)) sfx.bad();
     if (/paikattu/.test(battle.log)) sfx.repair();
+    if (/Isku|Vastaisku/.test(battle.log)) sfx.blade();
+    if (/torjuttiin/.test(battle.log)) sfx.parry();
   }
 
   const names: string[] = [];
@@ -207,7 +209,10 @@ function render(state: ShipState): void {
   if (battle.phase !== lastPhase) {
     const prev = lastPhase;
     lastPhase = battle.phase;
-    if (over && prev && prev !== battle.phase) (battle.phase === "victory" ? sfx.win : sfx.lose)();
+    if (over && prev && prev !== battle.phase) {
+      if (/vallattu|valtasivat/.test(battle.log)) sfx.capture();
+      else (battle.phase === "victory" ? sfx.win : sfx.lose)();
+    }
   }
   renderRun($("run"), state);
   const node = parseMap(state.run.map).find((item) => item.id === state.run.node);
@@ -242,7 +247,7 @@ function render(state: ShipState): void {
       .join("");
   }
   if (!boarding.on) march.innerHTML = "";
-  if (boarding.on && !lastBoard) sfx.jump();
+  if (boarding.on && !lastBoard) sfx.board();
   lastBoard = boarding.on;
 }
 
@@ -368,12 +373,17 @@ async function connectDuel(mode: "create" | "join" | "queue"): Promise<void> {
     if (duel.logSeq !== duelLog) {
       const previous = duelLog;
       duelLog = duel.logSeq;
-      if (previous >= 0 && /Isku|Laukaus|−/.test(duel.log)) sfx.hit();
-      if (previous >= 0 && /nousevat|Nousevat|kyytiin/i.test(duel.log)) sfx.jump();
+      if (previous >= 0 && /Isku|Vastaisku/.test(duel.log)) sfx.blade();
+      else if (previous >= 0 && /Laukaus|−/.test(duel.log)) sfx.hit();
+      if (previous >= 0 && /kyytiin/i.test(duel.log)) sfx.board();
+      if (previous >= 0 && /torjuttiin/.test(duel.log)) sfx.parry();
       if (duel.phase === "end" && previous >= 0) {
-        const mine = duel.seats.get(joined.sessionId)?.team ?? 0;
-        if (duel.winner === String(mine)) sfx.win();
-        else sfx.lose();
+        if (/vallattu/.test(duel.log)) sfx.capture();
+        else {
+          const mine = duel.seats.get(joined.sessionId)?.team ?? 0;
+          if (duel.winner === String(mine)) sfx.win();
+          else sfx.lose();
+        }
       }
     }
     const track = duel.phase === "wait" ? "kartta" : duel.phase === "end" ? "valikko" : "taistelu";

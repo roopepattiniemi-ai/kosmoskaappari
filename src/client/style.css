@@ -435,14 +435,46 @@ body[data-layout="portrait"] .audio-row input[type="range"] { width: 72px; }
   inset: 0;
   z-index: 7;
   overflow: auto;
-  background: rgba(8, 6, 5, 0.94);
-  padding: 12px;
+  display: grid;
+  place-items: center;
+  background: #07060a;
+  padding: 8px;
 }
-.board-panel, .duel-panel { width: min(920px, 100%); margin: 0 auto; display: grid; gap: 10px; }
-.board-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.blade-grid { display: grid; gap: 3px; }
-.blade { min-height: 44px; padding: 2px; background: #1a1612; border: 1px solid var(--brass); }
-.blade img { width: 100%; height: auto; display: block; pointer-events: none; }
+.board-stage {
+  position: relative;
+  width: min(100%, calc(100dvh * 960 / 540));
+  aspect-ratio: 960 / 540;
+  background: url("/assets/v01/abordaa_tausta.png") center / 100% 100% no-repeat;
+}
+.board-note {
+  position: absolute;
+  left: 18%;
+  right: 18%;
+  top: 4%;
+  margin: 0;
+  text-align: center;
+  color: var(--cream);
+  text-shadow: 0 2px 0 #000;
+}
+.board-cols {
+  position: absolute;
+  /* 6×6 cells stay inside the calm band (x 170–790, y 125–415), centered on (480, 282). */
+  left: 18.3%;
+  width: 63.4%;
+  top: 27.8%;
+  height: 48.9%;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4.2%;
+}
+.blade-side { display: flex; flex-direction: column; min-height: 0; }
+.blade-side b { color: var(--gold); font-size: 13px; text-shadow: 0 1px 0 #000; }
+.blade-grid { flex: 1; display: grid; gap: 2px; min-height: 0; }
+.blade { min-height: 0; padding: 0; background: transparent; border: 0; }
+.blade img { width: 90%; height: 90%; margin: 5%; object-fit: contain; display: block; pointer-events: none; }
+.duel-panel { width: min(920px, 100%); margin: 0 auto; display: grid; gap: 10px; }
+.duel-panel .board-cols { position: static; width: auto; height: auto; left: auto; top: auto; }
+.duel-panel .blade { min-height: 44px; background: #1a1612; border: 1px solid var(--brass); }
 .blade.picked { outline: 3px solid var(--gold); }
 .blade:disabled { opacity: 0.85; }
 #march { position: absolute; inset: 0; pointer-events: none; z-index: 4; }
@@ -474,8 +506,8 @@ body[data-layout="portrait"] .audio-row input[type="range"] { width: 72px; }
 .march { position: relative; height: 72px; }
 .march .marcher { top: 8px; animation-name: cross; }
 @keyframes cross { from { left: 0; } to { left: 24px; } }
-body[data-layout="portrait"] .board-cols,
-body[data-layout="portrait"] .duel-ships { grid-template-columns: 1fr; }
+body[data-layout="portrait"] .duel-ships,
+body[data-layout="portrait"] .duel-panel .board-cols { grid-template-columns: 1fr; }
 body[data-layout="portrait"] .duel-ships .march { height: 48px; }
 
 @keyframes popin { from { transform: scale(0.92); } to { transform: scale(1); } }

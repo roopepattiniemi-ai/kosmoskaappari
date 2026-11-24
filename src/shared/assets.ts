@@ -15,6 +15,13 @@ export const manifest = {
     "v01/merirosvo5_sheet.png",
   ],
   spark: "v01/kipina.png",
+  blades: [
+    "v01/miekka_viilto.png",
+    "v01/miekka_pisto.png",
+    "v01/miekka_lyonti.png",
+    "v01/miekka_torjunta.png",
+  ],
+  boarding: "v01/abordaa_tausta.png",
   /** Amber sweep. Rotate clockwise around the centre; the bright edge points up. */
   radarSweep: "v01/tutka_pyyhkaisy.png",
   radarSweepGreen: "v01/tutka_pyyhkaisy_vihrea.png",
@@ -82,6 +89,8 @@ export function manifestFiles(): string[] {
     manifest.enemy,
     ...manifest.crew,
     manifest.spark,
+    ...manifest.blades,
+    manifest.boarding,
     manifest.radarSweep,
     manifest.radarSweepGreen,
     ...manifest.weapons,

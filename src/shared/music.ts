@@ -26,6 +26,10 @@ export const SFX_FILES = {
   askel: "sfx_askel.mp3",
   voitto: "sfx_voitto.mp3",
   havio: "sfx_havio.mp3",
+  abordaa: "sfx_abordaa.mp3",
+  miekka: "sfx_miekka.mp3",
+  torjunta: "sfx_torjunta.mp3",
+  valtaus: "sfx_valtaus.mp3",
 } as const;
 
 export type SfxId = keyof typeof SFX_FILES;
