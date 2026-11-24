@@ -33,9 +33,8 @@ export function renderBoarding(host: HTMLElement, state: ShipState): void {
   if (next === shown) return;
   shown = next;
   const title = board.role === "defend" ? "He nousevat kyytiin" : "Abordaa";
-  host.innerHTML = `<section class="board-panel">
-    <h2>${title}</h2>
-    <p>${escapeHtml(board.note || "Ketju lähettää iskun.")}</p>
+  host.innerHTML = `<section class="board-stage">
+    <p class="board-note">${escapeHtml(title)}. ${escapeHtml(board.note || "Ketju lähettää iskun.")}</p>
     <div class="board-cols">
       ${grid("ours", "Me", board.us, board.ours)}
       ${grid("theirs", "He", board.them, board.theirs)}
@@ -48,8 +47,8 @@ function grid(side: string, label: string, hp: number, raw: string): string {
   const cells = decodeBlade(raw);
   const buttons = cells
     .map((type, index) => {
-      const crystal = manifest.crystals[type] ?? manifest.crystals[0];
-      return `<button type="button" class="blade" data-side="${side}" data-cell="${index}"><img alt="" src="${assetUrl(crystal)}" /></button>`;
+      const tile = manifest.blades[type] ?? manifest.blades[0];
+      return `<button type="button" class="blade" data-side="${side}" data-cell="${index}"><img alt="" src="${assetUrl(tile)}" /></button>`;
     })
     .join("");
   return `<div class="blade-side"><b>${label} ${hp}</b><div class="blade-grid" style="grid-template-columns:repeat(${B_COLS},minmax(0,1fr))">${buttons}</div></div>`;

@@ -144,8 +144,8 @@ function grid(raw: string, label: string, hp: number, mine: boolean): string {
   const cells = decodeBlade(raw);
   const buttons = cells
     .map((type, index) => {
-      const crystal = manifest.crystals[type] ?? manifest.crystals[0];
-      return `<button type="button" class="blade" data-act="blade" data-side="${mine ? "mine" : "foe"}" data-arg="${index}" ${mine ? "" : "disabled"}><img alt="" src="${assetUrl(crystal)}" /></button>`;
+      const tile = manifest.blades[type] ?? manifest.blades[0];
+      return `<button type="button" class="blade" data-act="blade" data-side="${mine ? "mine" : "foe"}" data-arg="${index}" ${mine ? "" : "disabled"}><img alt="" src="${assetUrl(tile)}" /></button>`;
     })
     .join("");
   return `<div class="blade-side"><b>${label} ${hp}</b><div class="blade-grid" style="grid-template-columns:repeat(${B_COLS},minmax(0,1fr))">${buttons}</div></div>`;
