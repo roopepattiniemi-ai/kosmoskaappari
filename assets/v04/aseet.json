@@ -1,0 +1,184 @@
+{
+  "kangas_px": [
+    128,
+    96
+  ],
+  "kiinnityspiste_px": [
+    44,
+    84
+  ],
+  "selite": "Kiinnityspiste = jalustalevyn alareunan keskikohta. Suupiste = piippu/linssi/ohjusten kärkien keskikohta. Kaikki osoittavat oikealle (+x).",
+  "aseet": {
+    "ase_laser_1": {
+      "tiedosto": "ase_laser_1.png",
+      "tyyppi": "laser",
+      "taso": 1,
+      "kiinnitys_px": [
+        44,
+        84
+      ],
+      "suu_px": [
+        93,
+        61
+      ],
+      "sisalto_bbox": [
+        19,
+        53,
+        95,
+        85
+      ]
+    },
+    "ase_laser_2": {
+      "tiedosto": "ase_laser_2.png",
+      "tyyppi": "laser",
+      "taso": 2,
+      "kiinnitys_px": [
+        44,
+        84
+      ],
+      "suu_px": [
+        104,
+        59
+      ],
+      "sisalto_bbox": [
+        16,
+        42,
+        106,
+        85
+      ]
+    },
+    "ase_laser_3": {
+      "tiedosto": "ase_laser_3.png",
+      "tyyppi": "laser",
+      "taso": 3,
+      "kiinnitys_px": [
+        44,
+        84
+      ],
+      "suu_px": [
+        123,
+        57
+      ],
+      "sisalto_bbox": [
+        11,
+        39,
+        124,
+        85
+      ]
+    },
+    "ase_tykki_1": {
+      "tiedosto": "ase_tykki_1.png",
+      "tyyppi": "tykki",
+      "taso": 1,
+      "kiinnitys_px": [
+        44,
+        84
+      ],
+      "suu_px": [
+        91,
+        61
+      ],
+      "sisalto_bbox": [
+        10,
+        49,
+        93,
+        85
+      ]
+    },
+    "ase_tykki_2": {
+      "tiedosto": "ase_tykki_2.png",
+      "tyyppi": "tykki",
+      "taso": 2,
+      "kiinnitys_px": [
+        44,
+        84
+      ],
+      "suu_px": [
+        102,
+        59
+      ],
+      "sisalto_bbox": [
+        9,
+        47,
+        104,
+        85
+      ]
+    },
+    "ase_tykki_3": {
+      "tiedosto": "ase_tykki_3.png",
+      "tyyppi": "tykki",
+      "taso": 3,
+      "kiinnitys_px": [
+        44,
+        84
+      ],
+      "suu_px": [
+        113,
+        57
+      ],
+      "sisalto_bbox": [
+        8,
+        36,
+        117,
+        85
+      ]
+    },
+    "ase_ohjus_1": {
+      "tiedosto": "ase_ohjus_1.png",
+      "tyyppi": "ohjus",
+      "taso": 1,
+      "kiinnitys_px": [
+        44,
+        84
+      ],
+      "suu_px": [
+        82,
+        53
+      ],
+      "sisalto_bbox": [
+        21,
+        41,
+        83,
+        85
+      ]
+    },
+    "ase_ohjus_2": {
+      "tiedosto": "ase_ohjus_2.png",
+      "tyyppi": "ohjus",
+      "taso": 2,
+      "kiinnitys_px": [
+        44,
+        84
+      ],
+      "suu_px": [
+        87,
+        47
+      ],
+      "sisalto_bbox": [
+        16,
+        30,
+        87,
+        85
+      ]
+    },
+    "ase_ohjus_3": {
+      "tiedosto": "ase_ohjus_3.png",
+      "tyyppi": "ohjus",
+      "taso": 3,
+      "kiinnitys_px": [
+        44,
+        84
+      ],
+      "suu_px": [
+        91,
+        40
+      ],
+      "sisalto_bbox": [
+        11,
+        15,
+        92,
+        85
+      ]
+    }
+  }
+}

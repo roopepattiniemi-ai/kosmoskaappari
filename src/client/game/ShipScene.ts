@@ -23,6 +23,11 @@ import { bridge } from "../bridge.js";
 
 const FEET_Y = FEET_ROW / CREW_FRAME;
 const CREW_SCALE = 1;
+/** v0.4 guns are 128×96. 1.5× keeps them readable on the 1600×700 hull. */
+const GUN_SCALE = 1.5;
+const GUN_PIVOT = { x: 44, y: 84 };
+const AIM_KEYS = ["aseet", "kilpi", "ohjaus", "reaktori"] as const;
+const GUN_KIND = ["", "laser", "tykki", "ohjus"] as const;
 
 interface CrewTarget {
   x: number;
@@ -42,6 +47,11 @@ export class ShipScene extends Phaser.Scene {
   private gunGfx!: Phaser.GameObjects.Graphics;
   private guns: Phaser.GameObjects.Image[] = [];
   private enemyLabels: Phaser.GameObjects.Text[] = [];
+private damage: Phaser.GameObjects.Image[] = [];
+private bubbleImage!: Phaser.GameObjects.Image;
+private reticle!: Phaser.GameObjects.Image;
+private mouths: Record<string, [number, number]> = {};
+private polys: number[][][] = [];
   private hover: SectionId | null = null;
   private mine: SectionId | null = null;
   private occupied = new Set<SectionId>();
@@ -68,10 +78,18 @@ export class ShipScene extends Phaser.Scene {
     this.load.image("enemy", assetUrl(manifest.enemy));
     this.load.json("shipMeta", assetUrl(manifest.shipMeta));
     this.load.json("enemyMeta", assetUrl(manifest.enemyMeta));
+    this.load.json("weaponMeta", assetUrl(manifest.weaponMeta));
     manifest.crew.forEach((file, index) => {
       this.load.spritesheet(`crew${index}`, assetUrl(file), { frameWidth: CREW_FRAME, frameHeight: CREW_FRAME });
     });
-    manifest.weapons.forEach((file, index) => this.load.image(`gun${index}`, assetUrl(file)));
+    for (const kind of ["laser", "tykki", "ohjus"] as const) {
+      for (const level of [1, 2, 3]) this.load.image(`gun-${kind}-${level}`, assetUrl(`v04/ase_${kind}_${level}.png`));
+    }
+    this.load.spritesheet("muzzle", assetUrl(manifest.muzzle), { frameWidth: 64, frameHeight: 48 });
+    this.load.image("missile", assetUrl(manifest.missile));
+    this.load.image("bubble", assetUrl(manifest.bubble));
+    this.load.image("reticle", assetUrl(manifest.reticle));
+    AIM_KEYS.forEach((key) => this.load.image(`dmg-${key}`, assetUrl(manifest.enemyDamage[key])));
     this.load.image("laser", assetUrl(manifest.laser));
     this.load.spritesheet("boom", assetUrl(manifest.explosion), { frameWidth: EXPLOSION_FRAME, frameHeight: EXPLOSION_FRAME });
     this.load.image("shieldfx", assetUrl(manifest.shieldHit));
@@ -81,23 +99,8 @@ export class ShipScene extends Phaser.Scene {
     this.cameras.main.setBackgroundColor("#0c0b0d");
     const shipMeta = this.cache.json.get("shipMeta") as { asepaikat?: Hardpoint[] } | undefined;
     if (shipMeta?.asepaikat?.length) this.hardpoints = shipMeta.asepaikat.slice(0, 4);
-    const enemyMeta = this.cache.json.get("enemyMeta") as {
-      osastot?: { id: string; nimi: string; x: number; y: number; w: number; h: number; osuma: number[] }[];
-      kilpi?: { x: number; y: number; r: number };
-    } | undefined;
-    if (enemyMeta?.osastot?.length) {
-      this.boxes = enemyMeta.osastot.map((box) => ({
-        id: box.id,
-        name: box.nimi,
-        x: box.x,
-        y: box.y,
-        w: box.w,
-        h: box.h,
-        hitX: box.osuma[0] ?? box.x,
-        hitY: box.osuma[1] ?? box.y,
-      }));
-    }
-    if (enemyMeta?.kilpi) this.bubble = enemyMeta.kilpi;
+    this.readWeaponMouths();
+    this.readEnemyRooms();
 
     this.stars = this.add.graphics();
     this.ship = this.add.container(0, 0);
@@ -106,9 +109,18 @@ export class ShipScene extends Phaser.Scene {
     this.gunGfx = this.add.graphics();
     const ladder = this.add.graphics();
     drawLadder(ladder);
-    this.guns = this.hardpoints.map(() => this.add.image(0, 0, "gun0").setOrigin(1, 0.5).setVisible(false));
+    this.guns = this.hardpoints.map(() =>
+      this.add.image(0, 0, "gun-laser-1")
+        .setOrigin(GUN_PIVOT.x / 128, GUN_PIVOT.y / 96)
+        .setFlipX(true)
+        .setScale(GUN_SCALE)
+        .setVisible(false),
+    );
     this.ship.add([hull, this.highlights, this.gunGfx, ladder, ...this.guns]);
     this.enemy = this.add.image(0, 0, "enemy").setOrigin(0, 0);
+    this.damage = AIM_KEYS.map((key) => this.add.image(0, 0, `dmg-${key}`).setOrigin(0, 0).setVisible(false).setDepth(11));
+    this.bubbleImage = this.add.image(0, 0, "bubble").setOrigin(0, 0).setDepth(14);
+    this.reticle = this.add.image(0, 0, "reticle").setOrigin(0, 0).setDepth(15);
     this.enemyGfx = this.add.graphics().setDepth(12);
     this.enemyLabels = this.boxes.map((box) =>
       this.add.text(0, 0, box.name, {
@@ -141,6 +153,12 @@ export class ShipScene extends Phaser.Scene {
         repeat: -1,
       });
     }
+    this.anims.create({
+      key: "muzzle-flash",
+      frames: this.anims.generateFrameNumbers("muzzle", { start: 0, end: 3 }),
+      frameRate: 18,
+      repeat: 0,
+    });
     this.anims.create({
       key: "explode",
       frames: this.anims.generateFrameNumbers("boom", { start: 0, end: 3 }),
@@ -211,7 +229,10 @@ export class ShipScene extends Phaser.Scene {
     this.guns.forEach((gun, index) => {
       const level = mounts[index] ?? 0;
       gun.setVisible(level > 0);
-      if (level > 0) gun.setTexture(`gun${level - 1}`);
+      if (level > 0) {
+        const kind = GUN_KIND[level] ?? "laser";
+        gun.setTexture(`gun-${kind}-${level}`);
+      }
       const spot = this.hardpoints[index];
       if (spot) gun.setPosition(spot.x, spot.y);
     });
@@ -259,6 +280,8 @@ export class ShipScene extends Phaser.Scene {
     const x = (pointer.worldX - this.enemy.x) / this.enemyScale;
     const y = (pointer.worldY - this.enemy.y) / this.enemyScale;
     for (let index = 0; index < this.boxes.length; index++) {
+      const poly = this.polys[index];
+      if (poly && pointInPoly(x, y, poly)) return index;
       const box = this.boxes[index]!;
       if (x >= box.x && x <= box.x + box.w && y >= box.y && y <= box.y + box.h) return index;
     }
@@ -333,25 +356,22 @@ export class ShipScene extends Phaser.Scene {
     const s = this.enemyScale;
     const ox = this.enemy.x;
     const oy = this.enemy.y;
-    if (this.shieldRatio > 0.02) {
-      const grow = 0.72 + 0.28 * this.shieldRatio;
-      g.lineStyle(Math.max(2, 4 * s), 0x7ec8ff, 0.25 + this.shieldRatio * 0.55);
-      g.strokeEllipse(ox + this.bubble.x * s, oy + this.bubble.y * s, this.bubble.r * 2 * s * grow, this.bubble.r * 1.35 * s * grow);
-    }
-    const showLabels = s >= 0.34;
+    this.damage.forEach((layer, index) => {
+      layer.setPosition(ox, oy).setScale(s).setVisible((this.enemySystems[index] ?? 100) < 45);
+    });
+    const bubbleOn = this.shieldRatio > 0.02;
+    this.bubbleImage.setVisible(bubbleOn).setPosition(ox - 34 * s, oy - 24 * s).setScale(s).setAlpha(0.28 + this.shieldRatio * 0.62);
     this.boxes.forEach((box, index) => {
       const hot = index === this.aim;
-      const cracked = (this.enemySystems[index] ?? 100) < 45;
-      g.lineStyle(hot ? 3 : 2, hot ? 0xe6c36a : cracked ? 0xc45a32 : 0xd7c4a0, hot ? 0.95 : 0.7);
+      if (!hot) return;
+      g.lineStyle(2, 0xe6c36a, 0.85);
       g.strokeRect(ox + box.x * s, oy + box.y * s, box.w * s, box.h * s);
-      const label = this.enemyLabels[index];
-      if (!label) return;
-      label.setVisible(showLabels);
-      label.setOrigin(0.5, 0.5);
-      label.setFontSize(Math.max(12, Math.round(22 * s)));
-      label.setPosition(ox + (box.x + box.w / 2) * s, oy + (box.y + box.h / 2) * s);
-      label.setColor(hot ? "#ffe08a" : "#fff4d2");
     });
+    const aimBox = this.boxes[this.aim];
+    if (aimBox) {
+      this.reticle.setVisible(true).setPosition(ox + (aimBox.hitX - 32) * s, oy + (aimBox.hitY - 32) * s).setScale(Math.max(s, 0.4));
+    } else this.reticle.setVisible(false);
+    this.enemyLabels.forEach((label) => label.setVisible(false));
   }
 
   private placeLabel(): void {
@@ -368,7 +388,15 @@ export class ShipScene extends Phaser.Scene {
 
   private gunWorld(slot: number): Phaser.Math.Vector2 {
     const spot = this.hardpoints[slot] ?? this.hardpoints[0] ?? { x: 232, y: 330 };
-    return new Phaser.Math.Vector2(this.ship.x + spot.x * this.ship.scaleX, this.ship.y + spot.y * this.ship.scaleY);
+    const level = this.mounts[slot] ?? 1;
+    const kind = GUN_KIND[level] ?? "laser";
+    const mouth = this.mouths[`${kind}_${level}`] ?? [93, 61];
+    const dx = (GUN_PIVOT.x - mouth[0]) * GUN_SCALE;
+    const dy = (mouth[1] - GUN_PIVOT.y) * GUN_SCALE;
+    return new Phaser.Math.Vector2(
+      this.ship.x + (spot.x + dx) * this.ship.scaleX,
+      this.ship.y + (spot.y + dy) * this.ship.scaleY,
+    );
   }
 
   private systemWorld(system: number): Phaser.Math.Vector2 {
@@ -383,23 +411,68 @@ export class ShipScene extends Phaser.Scene {
   }
 
   private enemyMuzzle(): Phaser.Math.Vector2 {
-    return new Phaser.Math.Vector2(this.enemy.x + ENEMY_MUZZLE.x * this.enemyScale, this.enemy.y + ENEMY_MUZZLE.y * this.enemyScale);
+    const box = this.boxes[0];
+    const x = box?.hitX ?? ENEMY_MUZZLE.x;
+    const y = box?.hitY ?? ENEMY_MUZZLE.y;
+    return new Phaser.Math.Vector2(this.enemy.x + x * this.enemyScale, this.enemy.y + y * this.enemyScale);
   }
 
   private fly(from: Phaser.Math.Vector2, to: Phaser.Math.Vector2, level: number, amount: number): void {
-    const img = this.add.image(from.x, from.y, "laser").setDepth(18);
-    img.setTint(level >= 3 ? 0xff9a3c : level === 2 ? 0xe6c36a : 0x9ff3ff);
-    img.setDisplaySize(36, 12);
+    const flash = this.add.sprite(from.x, from.y, "muzzle").setDepth(19).setOrigin(2 / 64, 24 / 48).setFlipX(true);
+    flash.play("muzzle-flash");
+    flash.once("animationcomplete", () => flash.destroy());
+    const missile = level >= 3;
+    const img = this.add.image(from.x, from.y, missile ? "missile" : "laser").setDepth(18);
+    if (missile) img.setOrigin(62 / 64, 12 / 24).setFlipX(true);
+    else {
+      img.setTint(level === 2 ? 0xe6c36a : 0x9ff3ff);
+      img.setDisplaySize(36, 12);
+    }
     this.tweens.add({
       targets: img,
       x: to.x,
       y: to.y,
-      duration: 280,
-      onUpdate: () => img.setRotation(Math.atan2(to.y - img.y, to.x - img.x)),
+      duration: missile ? 420 : 240,
+      onUpdate: () => {
+        if (!missile) img.setRotation(Math.atan2(to.y - img.y, to.x - img.x));
+      },
       onComplete: () => {
         img.destroy();
         this.burst(to, amount);
       },
+    });
+  }
+
+  private readWeaponMouths(): void {
+    const meta = this.cache.json.get("weaponMeta") as { aseet?: Record<string, { suu_px?: number[] }> } | undefined;
+    for (const [key, gun] of Object.entries(meta?.aseet ?? {})) {
+      const mouth = gun.suu_px;
+      if (mouth && mouth.length >= 2) this.mouths[key.replace("ase_", "")] = [mouth[0] ?? 0, mouth[1] ?? 0];
+    }
+  }
+
+  private readEnemyRooms(): void {
+    const meta = this.cache.json.get("enemyMeta") as {
+      huoneet?: Record<string, { bbox?: number[]; keskipiste?: number[]; aukko_px?: number[][] }>;
+    } | undefined;
+    const rooms = meta?.huoneet;
+    if (!rooms) return;
+    const names = ["Aseet", "Kilpi", "Ohjaus", "Reaktori"];
+    this.boxes = AIM_KEYS.map((key, index) => {
+      const room = rooms[key];
+      const bbox = room?.bbox ?? [0, 0, 10, 10];
+      const center = room?.keskipiste ?? [bbox[0] ?? 0, bbox[1] ?? 0];
+      this.polys[index] = room?.aukko_px ?? [];
+      return {
+        id: key,
+        name: names[index] ?? key,
+        x: bbox[0] ?? 0,
+        y: bbox[1] ?? 0,
+        w: (bbox[2] ?? 0) - (bbox[0] ?? 0),
+        h: (bbox[3] ?? 0) - (bbox[1] ?? 0),
+        hitX: center[0] ?? 0,
+        hitY: center[1] ?? 0,
+      };
     });
   }
 
@@ -466,6 +539,18 @@ function drawLadder(g: Phaser.GameObjects.Graphics): void {
     g.lineTo(LADDER_X + 11, y);
     g.strokePath();
   }
+}
+
+function pointInPoly(x: number, y: number, poly: number[][]): boolean {
+  let inside = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const xi = poly[i]?.[0] ?? 0;
+    const yi = poly[i]?.[1] ?? 0;
+    const xj = poly[j]?.[0] ?? 0;
+    const yj = poly[j]?.[1] ?? 0;
+    if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / ((yj - yi) || 1) + xi) inside = !inside;
+  }
+  return inside;
 }
 
 function sectionNear(x: number, y: number): SectionId | null {

@@ -6,7 +6,7 @@
 export const manifest = {
   ship: "v01/alus_oma.png",
   shipMeta: "v01/alus_oma.json",
-  enemy: "v01/alus_vihollinen.png",
+  enemy: "v04/vihollinen_jarjestelmat.png",
   crew: [
     "v01/merirosvo1_sheet.png",
     "v01/merirosvo2_sheet.png",
@@ -18,9 +18,30 @@ export const manifest = {
   /** Amber sweep. Rotate clockwise around the centre; the bright edge points up. */
   radarSweep: "v01/tutka_pyyhkaisy.png",
   radarSweepGreen: "v01/tutka_pyyhkaisy_vihrea.png",
-  /** Temporary hardpoint guns, level 1–3. Pivot is the right centre (96, 24); the barrel points left. */
-  weapons: ["v01/ase_laser.png", "v01/ase_tykki.png", "v01/ase_ohjus.png"],
-  enemyMeta: "v01/vihollinen.json",
+  /** v0.4 guns, 128×96, barrel points right, pivot (44, 84). The ship flips them toward the enemy. */
+  weapons: (["laser", "tykki", "ohjus"] as const).flatMap((kind) =>
+    [1, 2, 3].map((level) => `v04/ase_${kind}_${level}.png`),
+  ),
+  weaponMeta: "v04/aseet.json",
+  muzzle: "v04/suuliekki_sheet.png",
+  missile: "v04/ohjus_ammus.png",
+  enemyMeta: "v04/vihollinen_jarjestelmat.json",
+  enemyDamage: {
+    reaktori: "v04/vihollinen_vaurio_reaktori.png",
+    kilpi: "v04/vihollinen_vaurio_kilpi.png",
+    aseet: "v04/vihollinen_vaurio_aseet.png",
+    ohjaus: "v04/vihollinen_vaurio_ohjaus.png",
+  },
+  bubble: "v04/kilpikupla.png",
+  reticle: "v04/kohde_tahtain.png",
+  nodes: {
+    battle: "v04/solmu_taistelu.png",
+    shop: "v04/solmu_kauppa.png",
+    event: "v04/solmu_tapahtuma.png",
+    boss: "v04/solmu_pomo.png",
+    here: "v04/solmu_nykyinen.png",
+  },
+  shop: "v04/kauppa_tausta.png",
   crystals: [1, 2, 3, 4, 5, 6].map((n) => `v01/kristalli_${n}.png`),
   /** Colour index 1–7: I O T S Z J L */
   blocks: [
@@ -64,7 +85,15 @@ export function manifestFiles(): string[] {
     manifest.radarSweep,
     manifest.radarSweepGreen,
     ...manifest.weapons,
+    manifest.weaponMeta,
+    manifest.muzzle,
+    manifest.missile,
     manifest.enemyMeta,
+    ...Object.values(manifest.enemyDamage),
+    manifest.bubble,
+    manifest.reticle,
+    ...Object.values(manifest.nodes),
+    manifest.shop,
     ...manifest.crystals,
     ...manifest.blocks,
     manifest.laser,
