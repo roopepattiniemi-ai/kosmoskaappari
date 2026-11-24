@@ -1,7 +1,7 @@
 export const copy = {
   title: "Kosmoskaappari",
   tagline: "Viisi merirosvoa. Yksi runko. Yksi kierros.",
-  version: "Kierros v0.3",
+  version: "Kierros v0.4",
   nameLabel: "Nimesi",
   namePlaceholder: "Merirosvo",
   create: "Perusta laiva",

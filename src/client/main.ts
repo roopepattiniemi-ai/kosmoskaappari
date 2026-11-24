@@ -8,10 +8,13 @@ import { musicTrack } from "../shared/music.js";
 import { parseMap } from "../shared/run.js";
 import { parseIntegrity } from "../shared/stations.js";
 import { SECTION_IDS, SECTIONS, isSectionId, type SectionId } from "../shared/sections.js";
-import { ShipState } from "../server/schema.js";
+import { assetUrl, manifest } from "../shared/assets.js";
+import { DuelState, ShipState } from "../server/schema.js";
 import { sfx } from "./audio.js";
 import { bridge } from "./bridge.js";
 import { ShipScene } from "./game/ShipScene.js";
+import { mountBoarding, renderBoarding } from "./ui/boardingView.js";
+import { mountDuel, renderDuel } from "./ui/duelView.js";
 import { PuzzleController } from "./ui/puzzle.js";
 import { mountRun, renderRun } from "./ui/runview.js";
 
@@ -33,6 +36,8 @@ let lastPhase = "";
 let puzzle: PuzzleController;
 let prevState: { fuel: number; crystals: number; node: number; hull: number; levels: string; alarmed: boolean } | null = null;
 let lastStep = 0;
+let lastBoard = false;
+let duelLog = -1;
 
 const SYSTEMS = [
   ["weapons", copy.weapons],
@@ -225,6 +230,20 @@ function render(state: ShipState): void {
     lastStep = performance.now();
     sfx.step();
   }
+  const boarding = state.boarding;
+  $<HTMLButtonElement>("board-now").classList.toggle("hidden", battle.phase !== "battle" || battle.enemyShield > 1);
+  renderBoarding($("boarding"), state);
+  const march = $("march");
+  march.classList.toggle("hidden", !boarding.on);
+  march.classList.toggle("in", boarding.role === "defend");
+  if (boarding.on && march.childElementCount === 0) {
+    march.innerHTML = [0, 1, 2]
+      .map((index) => `<i class="marcher" style="background-image:url(${assetUrl(manifest.crew[index] ?? manifest.crew[0])});animation-delay:${index * 0.2}s"></i>`)
+      .join("");
+  }
+  if (!boarding.on) march.innerHTML = "";
+  if (boarding.on && !lastBoard) sfx.jump();
+  lastBoard = boarding.on;
 }
 
 function bootPhaser(): void {
@@ -313,6 +332,63 @@ async function connect(mode: "create" | "join"): Promise<void> {
   render(joined.state as ShipState);
 }
 
+async function connectDuel(mode: "create" | "join" | "queue"): Promise<void> {
+  const name = nameInput.value.trim() || "Merirosvo";
+  sessionStorage.setItem("kosmos-name", name);
+  lobbyStatus.textContent = copy.connecting;
+  const client = new Client(endpoint());
+  try {
+    if (mode === "queue") {
+      const response = await fetch(`${endpoint()}/match/duel`);
+      const data = (await response.json()) as { roomId?: string | null };
+      if (data.roomId) room = await client.joinById(data.roomId, { name }, DuelState);
+      else room = await client.create("duel", { name, queue: true }, DuelState);
+    } else if (mode === "create") room = await client.create("duel", { name }, DuelState);
+    else {
+      const id = codeInput.value.trim();
+      if (!id) {
+        lobbyStatus.textContent = copy.missing;
+        return;
+      }
+      room = await client.joinById(id, { name }, DuelState);
+    }
+  } catch (error) {
+    const text = String((error as Error)?.message ?? error);
+    lobbyStatus.textContent = /full|max|exceed/i.test(text) ? copy.full : copy.missing;
+    return;
+  }
+  duelLog = -1;
+  lobby.classList.add("hidden");
+  gameEl.classList.add("hidden");
+  $("duel").classList.remove("hidden");
+  const joined = room;
+  joined.onStateChange((state) => {
+    const duel = state as DuelState;
+    renderDuel($("duel"), duel, joined.sessionId);
+    if (duel.logSeq !== duelLog) {
+      const previous = duelLog;
+      duelLog = duel.logSeq;
+      if (previous >= 0 && /Isku|Laukaus|−/.test(duel.log)) sfx.hit();
+      if (previous >= 0 && /nousevat|Nousevat|kyytiin/i.test(duel.log)) sfx.jump();
+      if (duel.phase === "end" && previous >= 0) {
+        const mine = duel.seats.get(joined.sessionId)?.team ?? 0;
+        if (duel.winner === String(mine)) sfx.win();
+        else sfx.lose();
+      }
+    }
+    const track = duel.phase === "wait" ? "kartta" : duel.phase === "end" ? "valikko" : "taistelu";
+    sfx.musicTrack(track);
+  });
+  joined.onLeave(() => {
+    $("duel").classList.add("hidden");
+    lobby.classList.remove("hidden");
+    lobbyStatus.textContent = copy.left;
+    room = null;
+    sfx.musicTrack("valikko");
+  });
+  renderDuel($("duel"), joined.state as DuelState, joined.sessionId);
+}
+
 function typing(): boolean {
   const el = document.activeElement;
   return el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement;
@@ -334,6 +410,15 @@ puzzle = new PuzzleController(
 
 $("create").addEventListener("click", () => void connect("create"));
 $("join").addEventListener("click", () => void connect("join"));
+$("duel-create").addEventListener("click", () => void connectDuel("create"));
+$("duel-queue").addEventListener("click", () => void connectDuel("queue"));
+$("duel-join").addEventListener("click", () => void connectDuel("join"));
+$("board-now").addEventListener("click", () => {
+  sfx.tap();
+  room?.send("board");
+});
+mountBoarding($("boarding"), (type, payload) => room?.send(type, payload));
+mountDuel($("duel"), (type, payload) => room?.send(type, payload));
 $("restart").addEventListener("click", () => {
   sfx.tap();
   if ($<HTMLButtonElement>("restart").dataset.mode === "continue") room?.send("continue");

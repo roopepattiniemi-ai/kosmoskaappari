@@ -43,6 +43,14 @@ import {
   type RunNode,
 } from "../../shared/run.js";
 import { enemyOutput, parseMounts, parseSystems, resolvePlayerImpact } from "../../shared/hardpoints.js";
+import {
+  BOARD_HP,
+  aiBladeMove,
+  bladeSwap,
+  decodeBlade,
+  encodeBlade,
+  generateBladeBoard,
+} from "../../shared/boarding.js";
 import { decodeBoard, encodeBoard, findMove, generateBoard, trySwap } from "../../shared/match3.js";
 import type { GameEvent, TetrisCmd } from "../../shared/protocol.js";
 import { mulberry32, type Rng } from "../../shared/rng.js";
@@ -105,6 +113,8 @@ export class ShipSim {
   private nagAcc = 0;
   private charges = [0, 0, 0, 0];
   private looted = false;
+  private aiAcc = 0;
+  private boardClock = 0;
 
   constructor(
     readonly state: ShipState,
@@ -266,6 +276,10 @@ export class ShipSim {
   private step(dt: number): GameEvent[] {
     const events: GameEvent[] = [];
     this.moveCrew(dt);
+    if (this.state.battle.phase === "boarding") {
+      this.tickBoarding(dt);
+      return events;
+    }
     if (this.state.battle.phase !== "battle") {
       this.syncPerformance();
       return events;
@@ -281,6 +295,7 @@ export class ShipSim {
     events.push(...this.stepWeapons(dt));
     this.stepStations(dt);
     events.push(...this.stepCombat(dt));
+    this.maybeEnemyBoard(dt);
     this.repair(dt);
     this.syncPerformance();
     this.syncWeapons();
@@ -868,6 +883,7 @@ export class ShipSim {
     battle.enemyShieldMax = 60;
     battle.enemySys = "100,100,100,100";
     battle.aim = 0;
+    this.clearBoarding();
   }
 
   private currentNode(): RunNode | undefined {
@@ -1006,6 +1022,7 @@ export class ShipSim {
     battle.enemySys = "100,100,100,100";
     battle.aim = 0;
     this.looted = false;
+    this.clearBoarding();
     this.state.run.screen = "battle";
     this.pushLog(node.type === "boss" ? "Pomo lähestyy!" : "Vihollinen kontaktissa.");
   }
@@ -1121,6 +1138,129 @@ export class ShipSim {
     if (!node) return;
     if (node.type === "shop") run.screen = "shop";
     else if (node.type === "event" && !run.eventDone) run.screen = "event";
+  }
+
+  requestBoard(id: string): void {
+    if (!this.state.players.has(id) || this.state.battle.phase !== "battle") return;
+    if (this.state.battle.enemyShield > 1) {
+      this.pushLog("Vihollisen kilpi pitää vielä.");
+      return;
+    }
+    this.beginBoarding("attack");
+  }
+
+  blade(id: string, a: number, b: number): void {
+    if (this.state.battle.phase !== "boarding" || !this.state.players.has(id)) return;
+    const board = this.state.boarding;
+    const hit = bladeSwap(decodeBlade(board.ours), a, b, this.rng);
+    if (!hit) {
+      this.pushLog("Ei ketjua.");
+      return;
+    }
+    board.ours = encodeBlade(hit.board);
+    board.them = Math.max(0, board.them - hit.damage);
+    board.note = `Isku −${hit.damage}`;
+    this.pushLog(board.note);
+    this.finishBoarding();
+  }
+
+  private beginBoarding(role: "attack" | "defend"): void {
+    const board = this.state.boarding;
+    this.state.battle.phase = "boarding";
+    board.on = true;
+    board.role = role;
+    board.us = BOARD_HP;
+    board.them = BOARD_HP;
+    board.ours = encodeBlade(generateBladeBoard(this.rng));
+    board.theirs = encodeBlade(generateBladeBoard(this.rng));
+    board.note = role === "attack" ? "Abordaa! Ketju iskee." : "Vihollinen nousee kyytiin!";
+    this.aiAcc = 0;
+    this.pushLog(board.note);
+  }
+
+  private clearBoarding(): void {
+    const board = this.state.boarding;
+    board.on = false;
+    board.role = "";
+    board.us = BOARD_HP;
+    board.them = BOARD_HP;
+    board.ours = "";
+    board.theirs = "";
+    board.note = "";
+    this.aiAcc = 0;
+    this.boardClock = 0;
+  }
+
+  private maybeEnemyBoard(dt: number): void {
+    if (this.state.battle.phase !== "battle") return;
+    if (this.state.stations.shieldCharge > 28 || this.state.battle.enemyShield < 12) {
+      this.boardClock = 0;
+      return;
+    }
+    this.boardClock += dt;
+    if (this.boardClock < 12) return;
+    this.boardClock = 0;
+    if (this.rng() < 0.55) this.beginBoarding("defend");
+  }
+
+  private tickBoarding(dt: number): void {
+    this.aiAcc += dt;
+    if (this.aiAcc < 1.15) return;
+    this.aiAcc = 0;
+    const board = this.state.boarding;
+    const theirs = decodeBlade(board.theirs);
+    const move = aiBladeMove(theirs);
+    if (!move) {
+      board.theirs = encodeBlade(generateBladeBoard(this.rng));
+      return;
+    }
+    const hit = bladeSwap(theirs, move[0], move[1], this.rng);
+    if (!hit) return;
+    board.theirs = encodeBlade(hit.board);
+    board.us = Math.max(0, board.us - hit.damage);
+    board.note = `Vastaisku −${hit.damage}`;
+    this.pushLog(board.note);
+    this.finishBoarding();
+  }
+
+  private finishBoarding(): void {
+    const board = this.state.boarding;
+    if (!board.on) return;
+    if (board.them > 0 && board.us > 0) return;
+    const attack = board.role === "attack";
+    const weWon = board.them <= 0;
+    board.on = false;
+    if (attack && weWon) {
+      this.state.run.crystals += 8;
+      this.finishVictory();
+      this.pushLog("Alus vallattu! Lisäsaalis ruumaan.");
+      return;
+    }
+    if (attack && !weWon) {
+      this.state.battle.phase = "battle";
+      this.state.battle.playerHull = Math.max(0, this.state.battle.playerHull - 14);
+      this.state.battle.enemyShield = Math.min(this.state.battle.enemyShieldMax, 24);
+      this.pushLog("Abordaa torjuttiin.");
+    } else if (!attack && weWon) {
+      this.state.battle.phase = "battle";
+      this.state.battle.enemyHull = Math.max(0, this.state.battle.enemyHull - 24);
+      this.state.battle.enemyShield = Math.min(this.state.battle.enemyShieldMax, 20);
+      this.pushLog("Maihinnousu torjuttiin.");
+      if (this.state.battle.enemyHull <= 0) this.finishVictory();
+    } else {
+      this.state.battle.playerHull = Math.max(0, this.state.battle.playerHull - 26);
+      if (this.state.battle.playerHull <= 0) {
+        this.state.battle.phase = "defeat";
+        this.state.battle.playerHull = 0;
+        this.state.run.screen = "over";
+        this.pushLog("He valtasivat kannen. Runko petti.");
+      } else {
+        this.state.battle.phase = "battle";
+        this.state.battle.enemyShield = Math.min(this.state.battle.enemyShieldMax, 30);
+        this.pushLog("Kansi menetetty hetkeksi.");
+      }
+    }
+    board.role = "";
   }
 }
 

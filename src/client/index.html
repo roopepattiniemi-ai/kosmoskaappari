@@ -13,11 +13,14 @@
         <img class="banner" src="/assets/v01/alus_oma.png" alt="Oma alus" />
         <h1>Kosmoskaappari</h1>
         <p class="tag">Viisi merirosvoa. Yksi runko. Yksi kierros.</p>
-        <p class="version">Kierros v0.3</p>
+        <p class="version">Kierros v0.4</p>
         <label>Nimesi <input id="name" maxlength="16" autocomplete="nickname" placeholder="Merirosvo" /></label>
         <div class="lobby-actions">
           <button id="create" class="wood" type="button">Perusta laiva</button>
           <button id="join" class="wood" type="button">Liity koodilla</button>
+          <button id="duel-create" class="wood" type="button">PvP-koodi</button>
+          <button id="duel-queue" class="wood" type="button">Jonota PvP</button>
+          <button id="duel-join" class="wood" type="button">Liity otteluun</button>
         </div>
         <label>Huonekoodi <input id="code" maxlength="12" autocapitalize="off" spellcheck="false" placeholder="esim. Ab12Cd34E" /></label>
         <p id="lobby-status" class="status" role="status"></p>
@@ -49,6 +52,7 @@
             <div class="ebar" id="hull-bar"><img class="fill" alt="" src="/assets/v01/energiapalkki_tayte.png" /><img class="frame" alt="" src="/assets/v01/energiapalkki_kehys.png" /></div>
           </div>
           <div id="enemy-timer">Vihollisen tykki 6 s</div>
+          <button id="board-now" class="wood tiny hidden" type="button">Abordaa</button>
           <div class="hull enemy">
             <span>Vihollinen <b id="enemy-num">140</b></span>
             <div class="ebar" id="enemy-bar"><img class="fill" alt="" src="/assets/v01/energiapalkki_tayte.png" /><img class="frame" alt="" src="/assets/v01/energiapalkki_kehys.png" /></div>
@@ -60,6 +64,7 @@
 
       <div id="ship-pane">
         <div id="phaser"></div>
+        <div id="march" class="hidden"></div>
         <p id="ship-caption">Kosketa huonetta</p>
       </div>
 
@@ -84,6 +89,7 @@
         </div>
       </section>
 
+      <div id="boarding" class="hidden"></div>
       <div id="run" class="hidden"></div>
       <div id="end" class="hidden">
         <div class="end-card">
@@ -94,6 +100,7 @@
       </div>
 
     </div>
+    <div id="duel" class="screen hidden"></div>
     <script type="module" src="./main.ts"></script>
   </body>
 </html>

@@ -412,6 +412,54 @@ body[data-layout="portrait"] .audio-row input[type="range"] { width: 72px; }
 .upgrade-list li { display: flex; flex-direction: column; border: 1px solid var(--brass); border-radius: 6px; padding: 6px 8px; background: #16130f; }
 .upgrade-list span, .guns { font-size: 13px; opacity: 0.9; }
 .tools { flex-wrap: wrap; align-items: center; }
+#board-now { justify-self: center; }
+#boarding {
+  position: absolute;
+  inset: 0;
+  z-index: 7;
+  overflow: auto;
+  background: rgba(8, 6, 5, 0.94);
+  padding: 12px;
+}
+.board-panel, .duel-panel { width: min(920px, 100%); margin: 0 auto; display: grid; gap: 10px; }
+.board-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.blade-grid { display: grid; gap: 3px; }
+.blade { min-height: 44px; padding: 2px; background: #1a1612; border: 1px solid var(--brass); }
+.blade img { width: 100%; height: auto; display: block; pointer-events: none; }
+.blade.picked { outline: 3px solid var(--gold); }
+.blade:disabled { opacity: 0.85; }
+#march { position: absolute; inset: 0; pointer-events: none; z-index: 4; }
+.marcher {
+  position: absolute;
+  top: 36%;
+  width: 56px;
+  height: 56px;
+  background-size: 224px 112px;
+  background-position: 0 0;
+  animation: boardwalk 2.2s linear infinite;
+}
+@keyframes boardwalk { from { left: 70%; } to { left: 6%; } }
+#march.in .marcher { animation-direction: reverse; }
+#duel { min-height: 100dvh; overflow: auto; padding: 12px 12px 28px; background: var(--space); }
+.duel-ships { display: grid; grid-template-columns: minmax(0, 1fr) 72px minmax(0, 1fr); gap: 8px; align-items: center; }
+.duel-ship { display: grid; gap: 4px; }
+.duel-ship .hull-pic { width: 100%; height: auto; }
+.hull-pic.face { transform: scaleX(-1); }
+.crew-row { display: flex; gap: 4px; min-height: 36px; }
+.crew-dot { width: 36px; height: 36px; background-size: 144px 72px; background-position: 0 0; }
+.duel-ship .ebar { height: 12px; background: #1a120c; border: 1px solid var(--brass); }
+.duel-ship .ebar i { display: block; height: 100%; background: #7dbe55; }
+.duel-ship .ebar.shield i { background: #7ec8ff; }
+.sys-pips { display: flex; flex-wrap: wrap; gap: 4px; font-size: 12px; }
+.sys-pips .hot { color: var(--gold); }
+.duel-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.duel-wait { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.march { position: relative; height: 72px; }
+.march .marcher { top: 8px; animation-name: cross; }
+@keyframes cross { from { left: 0; } to { left: 24px; } }
+body[data-layout="portrait"] .board-cols,
+body[data-layout="portrait"] .duel-ships { grid-template-columns: 1fr; }
+body[data-layout="portrait"] .duel-ships .march { height: 48px; }
 
 @keyframes popin { from { transform: scale(0.92); } to { transform: scale(1); } }
 @keyframes pulse { 50% { transform: scale(1.04); } }

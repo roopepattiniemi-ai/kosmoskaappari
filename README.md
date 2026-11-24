@@ -1,6 +1,8 @@
-# Kosmoskaappari v0.3
+# Kosmoskaappari v0.4
 
 Enintään viiden pelaajan avaruusmerirosvojen yhteispeli selaimessa. Kierros on FTL-tyylinen sektorikartta: noin kolme sektoria, kussakin 6–8 solmua (taistelu, kauppa, tapahtuma, pomo). Miehistö äänestää hypyn. Polttoaine kuluu, runko ja päivitykset säilyvät, ja runko nollassa kierros päättyy.
+
+Kun vihollisen kilpi on alhaalla, miehistö voi abordata. Ketjupulma ratkaisee, valtaavatko hyökkääjät kannen vai torjutaanko heidät. Vihollinen voi myös nousta meidän alukseen. Aulasta alkaa PvP-ottelu kahden miehistön välillä huonekoodilla tai jonolla. Tyhjät paikat täyttyvät botilla.
 
 Voitoista saa kiteitä. Kaupassa korjataan runkoa, ostetaan polttoainetta ja aseita sekä päivitetään järjestelmiä tasoille 1–3. Aseet näkyvät aluksen kyljen asepaikoissa, ja taistelussa oma alus ja vihollinen ovat rinnakkain. Laukaus lähtee asepaikasta valittuun vihollisen järjestelmään. Vihollisen kilpikupla kuluu osumista.
 

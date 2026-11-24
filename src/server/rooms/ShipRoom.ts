@@ -75,6 +75,12 @@ export class ShipRoom extends Room<{ state: ShipState }> {
     this.onMessage("aim", (client, message: { system?: number }) => {
       this.sim.aim(client.sessionId, Number(message?.system));
     });
+    this.onMessage("board", (client) => {
+      this.sim.requestBoard(client.sessionId);
+    });
+    this.onMessage("blade", (client, message: { a?: number; b?: number }) => {
+      this.sim.blade(client.sessionId, Number(message?.a), Number(message?.b));
+    });
     this.onMessage("debug", (client, message: { cmd?: string }) => {
       if (process.env.KOSMOS_TEST !== "1") return;
       void client;

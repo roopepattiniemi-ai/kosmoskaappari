@@ -3,6 +3,7 @@ import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { defineRoom, defineServer, type Server } from "colyseus";
 import express, { type NextFunction, type Request, type Response } from "express";
+import { DuelRoom, waitingDuelId } from "./rooms/DuelRoom.js";
 import { ShipRoom } from "./rooms/ShipRoom.js";
 
 const moduleDir = path.dirname(fileURLToPath(import.meta.url));
@@ -16,8 +17,12 @@ export function createGameServer(): Server {
     greet: process.env.KOSMOS_TEST !== "1",
     rooms: {
       ship: defineRoom(ShipRoom),
+      duel: defineRoom(DuelRoom),
     },
     express: (app) => {
+      app.get("/match/duel", (_req: Request, res: Response) => {
+        res.json({ roomId: waitingDuelId() });
+      });
       app.use("/assets", express.static(assetsDir, { fallthrough: true, index: false }));
       if (existsSync(clientDir)) {
         app.use(express.static(clientDir, { index: "index.html", fallthrough: true }));

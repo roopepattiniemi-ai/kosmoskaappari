@@ -108,6 +108,21 @@ export const RunState = schema(
 );
 export type RunState = SchemaType<typeof RunState>;
 
+export const BoardingState = schema(
+  {
+    on: t.boolean().default(false),
+    /** "attack" when we board them, "defend" when they board us. */
+    role: t.string().default(""),
+    us: t.uint8().default(80),
+    them: t.uint8().default(80),
+    ours: t.string().default(""),
+    theirs: t.string().default(""),
+    note: t.string().default(""),
+  },
+  "BoardingState",
+);
+export type BoardingState = SchemaType<typeof BoardingState>;
+
 export const BattleState = schema(
   {
     phase: t.string().default("battle"),
@@ -139,8 +154,50 @@ export const ShipState = schema(
     stations: StationsState,
     run: RunState,
     battle: BattleState,
+    boarding: BoardingState,
     roomCode: t.string().default(""),
   },
   "ShipState",
 );
+
+export const SeatState = schema(
+  {
+    name: t.string().default(""),
+    team: t.uint8().default(0),
+    bot: t.boolean().default(false),
+    color: t.uint8().default(0),
+  },
+  "SeatState",
+);
+export type SeatState = SchemaType<typeof SeatState>;
+
+export const DuelState = schema(
+  {
+    phase: t.string().default("wait"),
+    roomCode: t.string().default(""),
+    queued: t.boolean().default(false),
+    log: t.string().default("Odotetaan miehistöjä."),
+    logSeq: t.uint16().default(1),
+    winner: t.string().default(""),
+    seats: t.map(SeatState),
+    hull0: t.float32().default(100),
+    hull1: t.float32().default(100),
+    shield0: t.float32().default(36),
+    shield1: t.float32().default(36),
+    charge0: t.float32().default(0),
+    charge1: t.float32().default(0),
+    aim0: t.uint8().default(0),
+    aim1: t.uint8().default(0),
+    sys0: t.string().default("100,100,100,100"),
+    sys1: t.string().default("100,100,100,100"),
+    /** -1 none, otherwise the boarding team. */
+    attacker: t.int8().default(-1),
+    hp0: t.uint8().default(80),
+    hp1: t.uint8().default(80),
+    board0: t.string().default(""),
+    board1: t.string().default(""),
+  },
+  "DuelState",
+);
+export type DuelState = SchemaType<typeof DuelState>;
 export type ShipState = SchemaType<typeof ShipState>;
