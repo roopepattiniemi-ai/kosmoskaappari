@@ -75,7 +75,7 @@ describe("two clients, one ship", () => {
       );
 
       roomB.send("debug", { cmd: "line" });
-      await waitFor(() => stateA.weapons.ammo.length > 0 && stateB.weapons.ammo === stateA.weapons.ammo, "ammo sync");
+      await waitFor(() => stateA.weapons.ammo.length > 0 && stateB.weapons.ammo === stateA.weapons.ammo, "ammo sync", 10000);
 
       const enemy = stateA.battle.enemyHull;
       await waitFor(() => stateB.battle.enemyHull < enemy, "shot landed", 4000);

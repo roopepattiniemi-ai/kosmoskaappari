@@ -34,6 +34,6 @@ export function musicTrack(input: { inGame: boolean; phase: string; screen: stri
   if (!input.inGame) return "valikko";
   if (input.screen === "shop") return "kauppa";
   if (input.phase === "defeat" || input.screen === "won" || input.screen === "over") return "valikko";
-  if (input.phase === "battle" || input.phase === "victory") return input.boss ? "pomo" : "taistelu";
+  if (input.phase === "battle" || input.phase === "victory" || input.phase === "boarding") return input.boss ? "pomo" : "taistelu";
   return "kartta";
 }

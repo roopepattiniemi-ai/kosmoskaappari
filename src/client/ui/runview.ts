@@ -1,3 +1,4 @@
+import { assetUrl, manifest } from "../../shared/assets.js";
 import { parseMap, RUN_EVENTS, upgradeCost } from "../../shared/run.js";
 import { parseMounts, WEAPON_NAMES } from "../../shared/hardpoints.js";
 import type { ShipState } from "../../server/schema.js";
@@ -43,6 +44,7 @@ export function renderRun(host: HTMLElement, state: ShipState): void {
   const screen = run.screen;
   const show = screen === "map" || screen === "shop" || screen === "event";
   host.classList.toggle("hidden", !show);
+  host.classList.toggle("shop-open", screen === "shop");
   if (!show) return;
   if (screen === "shop") host.innerHTML = shop(state);
   else if (screen === "event") host.innerHTML = event(state);
@@ -103,8 +105,10 @@ function map(state: ShipState): string {
         .map((node) => {
           const votes = votesFor(state, node.id);
           const open = next.has(node.id);
+          const icon = manifest.nodes[node.type];
+          const here = node.id === run.node ? `<img class="here-mark" alt="" src="${assetUrl(manifest.nodes.here)}" />` : "";
           return `<button type="button" class="wood node t-${node.type}${node.id === run.node ? " here" : ""}" data-act="vote" data-arg="${node.id}" ${open ? "" : "disabled"}>
-            <i></i><b>${TYPE_LABEL[node.type]}</b><small>${votes ? `${votes} ääntä` : open ? "Hyppää" : ""}</small>
+            <span class="node-icon"><img alt="" src="${assetUrl(icon)}" />${here}</span><b>${TYPE_LABEL[node.type]}</b><small>${votes ? `${votes} ääntä` : open ? "Hyppää" : ""}</small>
           </button>`;
         })
         .join("");
@@ -140,7 +144,8 @@ function shop(state: ShipState): string {
     const cost = level >= 3 ? 0 : upgradeCost(level + 1);
     return buy(`up:${key}`, `${UPGRADE_LABEL[key]} taso ${Math.min(3, level + 1)}`, cost, level < 3);
   }).join("");
-  return `<section class="run-panel">
+  return `<section class="shop-scene" style="background-image:url(${assetUrl(manifest.shop)})">
+    <div class="shop-panel">
     <h2>Kauppa</h2>
     <p>Kiteet ${run.crystals} · Polttoaine ${run.fuel} · Runko ${Math.ceil(state.battle.playerHull)}</p>
     <div class="shop-grid">
@@ -151,6 +156,7 @@ function shop(state: ShipState): string {
     </div>
     ${levels(state)}
     <button type="button" class="wood" data-act="done">Kartalle</button>
+    </div>
   </section>`;
 }
 

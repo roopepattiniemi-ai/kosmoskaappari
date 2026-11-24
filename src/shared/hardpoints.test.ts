@@ -25,6 +25,18 @@ describe("hardpoints and cues", () => {
       assert.ok(box.osuma[1] >= box.y && box.osuma[1] <= box.y + box.h);
     }
     assert.deepEqual(parseMounts("1,0,3,2"), [1, 0, 3, 2]);
+    const guns = JSON.parse(readFileSync(path.join(root, "assets/v04/aseet.json"), "utf8"));
+    assert.deepEqual(guns.kiinnityspiste_px, [44, 84]);
+    assert.equal(Object.keys(guns.aseet).length, 9);
+    const rooms = JSON.parse(readFileSync(path.join(root, "assets/v04/vihollinen_jarjestelmat.json"), "utf8"));
+    for (const key of ["reaktori", "kilpi", "aseet", "ohjaus"]) {
+      const room = rooms.huoneet[key];
+      const [x0, y0, x1, y1] = room.bbox;
+      const [cx, cy] = room.keskipiste;
+      assert.ok(cx >= x0 && cx <= x1 && cy >= y0 && cy <= y1, key);
+      assert.ok(room.aukko_px.length >= 3);
+    }
+    assert.deepEqual(rooms.kilpikupla.piirtokohta_aluskankaalla, [-34, -24]);
   });
 
   it("lets the shield bubble take part of a shot and weakens a broken enemy", () => {

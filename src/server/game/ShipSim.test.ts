@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
+import { B_CELLS, encodeBlade } from "../../shared/boarding.ts";
 import { idx } from "../../shared/match3.ts";
 import { parseMap } from "../../shared/run.ts";
 import { FLOOR_Y } from "../../shared/sections.ts";
@@ -262,5 +263,23 @@ describe("ship simulation", () => {
     sim.tick(0.05);
     assert.equal(sim.state.battle.phase, "defeat");
     assert.equal(sim.state.run.screen, "over");
+  });
+
+  it("opens a boarding puzzle when the enemy bubble is down", () => {
+    const sim = boot();
+    sim.requestBoard("a");
+    assert.equal(sim.state.battle.phase, "battle");
+    sim.state.battle.enemyShield = 0;
+    sim.requestBoard("a");
+    assert.equal(sim.state.battle.phase, "boarding");
+    assert.equal(sim.state.boarding.role, "attack");
+    const board = Array.from({ length: B_CELLS }, () => 1);
+    board[0] = 0;
+    board[1] = 0;
+    board[2] = 1;
+    board[3] = 0;
+    sim.state.boarding.ours = encodeBlade(board);
+    sim.blade("a", 2, 3);
+    assert.ok(sim.state.boarding.them < 80);
   });
 });
