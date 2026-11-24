@@ -1,14 +1,19 @@
 import Phaser from "phaser";
 import { assetUrl, manifest, CREW_FRAME, EXPLOSION_FRAME } from "../../shared/assets.js";
 import {
+  DEFAULT_BUBBLE,
+  DEFAULT_ENEMY_BOXES,
+  DEFAULT_HARDPOINTS,
+  type EnemyBox,
+  type Hardpoint,
+} from "../../shared/hardpoints.js";
+import {
   CONTENT_BBOX,
-  ENEMY_CENTER,
   ENEMY_MUZZLE,
   FEET_ROW,
   FLOOR_Y,
   HULL_HIT,
   LADDER_X,
-  MUZZLE,
   SECTION_IDS,
   SECTIONS,
   sectionAt,
@@ -17,7 +22,6 @@ import {
 import { bridge } from "../bridge.js";
 
 const FEET_Y = FEET_ROW / CREW_FRAME;
-/** Native frame size: the top of the sprite sits at floorY − 124. */
 const CREW_SCALE = 1;
 
 interface CrewTarget {
@@ -34,6 +38,10 @@ export class ShipScene extends Phaser.Scene {
   private highlights!: Phaser.GameObjects.Graphics;
   private stars!: Phaser.GameObjects.Graphics;
   private enemy!: Phaser.GameObjects.Image;
+  private enemyGfx!: Phaser.GameObjects.Graphics;
+  private gunGfx!: Phaser.GameObjects.Graphics;
+  private guns: Phaser.GameObjects.Image[] = [];
+  private enemyLabels: Phaser.GameObjects.Text[] = [];
   private hover: SectionId | null = null;
   private mine: SectionId | null = null;
   private occupied = new Set<SectionId>();
@@ -42,7 +50,14 @@ export class ShipScene extends Phaser.Scene {
   private label!: Phaser.GameObjects.Text;
   private enemyScale = 0.2;
   private cracks = [100, 100, 100, 100, 100, 100];
-  private static readonly TINTS = [0xffffff, 0xffffff, 0xe6c36a, 0x8ec5ff, 0xe07050];
+  private hardpoints: Hardpoint[] = DEFAULT_HARDPOINTS;
+  private boxes: EnemyBox[] = DEFAULT_ENEMY_BOXES;
+  private bubble = DEFAULT_BUBBLE;
+  private mounts = [1, 0, 0, 0];
+  private charges = [0, 0, 0, 0];
+  private enemySystems = [100, 100, 100, 100];
+  private shieldRatio = 0.6;
+  private aim = 0;
 
   constructor() {
     super("ship");
@@ -51,8 +66,12 @@ export class ShipScene extends Phaser.Scene {
   preload(): void {
     this.load.image("ship", assetUrl(manifest.ship));
     this.load.image("enemy", assetUrl(manifest.enemy));
-    this.load.spritesheet("crew0", assetUrl(manifest.crew[0]), { frameWidth: CREW_FRAME, frameHeight: CREW_FRAME });
-    this.load.spritesheet("crew1", assetUrl(manifest.crew[1]), { frameWidth: CREW_FRAME, frameHeight: CREW_FRAME });
+    this.load.json("shipMeta", assetUrl(manifest.shipMeta));
+    this.load.json("enemyMeta", assetUrl(manifest.enemyMeta));
+    manifest.crew.forEach((file, index) => {
+      this.load.spritesheet(`crew${index}`, assetUrl(file), { frameWidth: CREW_FRAME, frameHeight: CREW_FRAME });
+    });
+    manifest.weapons.forEach((file, index) => this.load.image(`gun${index}`, assetUrl(file)));
     this.load.image("laser", assetUrl(manifest.laser));
     this.load.spritesheet("boom", assetUrl(manifest.explosion), { frameWidth: EXPLOSION_FRAME, frameHeight: EXPLOSION_FRAME });
     this.load.image("shieldfx", assetUrl(manifest.shieldHit));
@@ -60,14 +79,46 @@ export class ShipScene extends Phaser.Scene {
 
   create(): void {
     this.cameras.main.setBackgroundColor("#0c0b0d");
+    const shipMeta = this.cache.json.get("shipMeta") as { asepaikat?: Hardpoint[] } | undefined;
+    if (shipMeta?.asepaikat?.length) this.hardpoints = shipMeta.asepaikat.slice(0, 4);
+    const enemyMeta = this.cache.json.get("enemyMeta") as {
+      osastot?: { id: string; nimi: string; x: number; y: number; w: number; h: number; osuma: number[] }[];
+      kilpi?: { x: number; y: number; r: number };
+    } | undefined;
+    if (enemyMeta?.osastot?.length) {
+      this.boxes = enemyMeta.osastot.map((box) => ({
+        id: box.id,
+        name: box.nimi,
+        x: box.x,
+        y: box.y,
+        w: box.w,
+        h: box.h,
+        hitX: box.osuma[0] ?? box.x,
+        hitY: box.osuma[1] ?? box.y,
+      }));
+    }
+    if (enemyMeta?.kilpi) this.bubble = enemyMeta.kilpi;
+
     this.stars = this.add.graphics();
     this.ship = this.add.container(0, 0);
     const hull = this.add.image(0, 0, "ship").setOrigin(0, 0);
     this.highlights = this.add.graphics();
+    this.gunGfx = this.add.graphics();
     const ladder = this.add.graphics();
     drawLadder(ladder);
-    this.ship.add([hull, this.highlights, ladder]);
+    this.guns = this.hardpoints.map(() => this.add.image(0, 0, "gun0").setOrigin(1, 0.5).setVisible(false));
+    this.ship.add([hull, this.highlights, this.gunGfx, ladder, ...this.guns]);
     this.enemy = this.add.image(0, 0, "enemy").setOrigin(0, 0);
+    this.enemyGfx = this.add.graphics().setDepth(12);
+    this.enemyLabels = this.boxes.map((box) =>
+      this.add.text(0, 0, box.name, {
+        fontFamily: "Lilita, sans-serif",
+        fontSize: "15px",
+        color: "#fff4d2",
+        stroke: "#000000",
+        strokeThickness: 4,
+      }).setOrigin(0.5, 1).setDepth(13),
+    );
     this.label = this.add.text(0, 0, "", {
       fontFamily: "Lilita, sans-serif",
       fontSize: "22px",
@@ -76,17 +127,16 @@ export class ShipScene extends Phaser.Scene {
       strokeThickness: 5,
     }).setOrigin(0.5, 1).setDepth(20);
 
-    for (const key of ["crew0", "crew1"] as const) {
-      const prefix = key === "crew0" ? "0" : "1";
+    for (let index = 0; index < manifest.crew.length; index++) {
       this.anims.create({
-        key: `idle${prefix}`,
-        frames: this.anims.generateFrameNumbers(key, { start: 0, end: 3 }),
+        key: `idle${index}`,
+        frames: this.anims.generateFrameNumbers(`crew${index}`, { start: 0, end: 3 }),
         frameRate: 6,
         repeat: -1,
       });
       this.anims.create({
-        key: `walk${prefix}`,
-        frames: this.anims.generateFrameNumbers(key, { start: 4, end: 7 }),
+        key: `walk${index}`,
+        frames: this.anims.generateFrameNumbers(`crew${index}`, { start: 4, end: 7 }),
         frameRate: 10,
         repeat: -1,
       });
@@ -99,9 +149,14 @@ export class ShipScene extends Phaser.Scene {
     });
 
     this.input.on("pointermove", (pointer: Phaser.Input.Pointer) => {
-      this.hover = this.pick(pointer);
+      this.hover = this.enemyBoxAt(pointer) === null ? this.pick(pointer) : null;
     });
     this.input.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
+      const system = this.enemyBoxAt(pointer);
+      if (system !== null) {
+        bridge.onAim(system);
+        return;
+      }
       const section = this.pick(pointer);
       if (section) bridge.onSection(section);
     });
@@ -119,10 +174,10 @@ export class ShipScene extends Phaser.Scene {
       const section = sectionNear(target.x, target.y);
       if (section && !target.walking) this.occupied.add(section);
       if (id === bridge.sessionId && !target.walking) this.mine = section;
+      const color = Math.max(0, Math.min(manifest.crew.length - 1, target.color));
       let actor = this.crew.get(id);
       if (!actor) {
-        const sprite = this.add.sprite(0, 0, target.color % 2 === 0 ? "crew0" : "crew1", 0);
-        sprite.setTint(ShipScene.TINTS[target.color] ?? 0xffffff);
+        const sprite = this.add.sprite(0, 0, `crew${color}`, 0);
         sprite.setOrigin(0.5, FEET_Y);
         sprite.setScale(CREW_SCALE);
         const ring = this.add.ellipse(0, -2, 72, 14, 0xe6c36a, 0.0);
@@ -131,7 +186,8 @@ export class ShipScene extends Phaser.Scene {
         actor = { root, sprite, ring, shownX: target.x, shownY: target.y };
         this.crew.set(id, actor);
       }
-      actor.sprite.setTint(ShipScene.TINTS[target.color] ?? 0xffffff);
+      if (actor.sprite.texture.key !== `crew${color}`) actor.sprite.setTexture(`crew${color}`, 0);
+      actor.sprite.clearTint();
       actor.ring.setFillStyle(0xe6c36a, id === bridge.sessionId ? 0.4 : 0);
     }
     for (const [id, actor] of this.crew) {
@@ -146,13 +202,27 @@ export class ShipScene extends Phaser.Scene {
     this.cracks = values;
   }
 
-  playFx(kind: string, amount: number): void {
-    if (kind === "laser-me") this.bolt(this.muzzleWorld(), this.enemyMuzzle(), 0xffe08a);
-    if (kind === "laser-them") this.bolt(this.enemyMuzzle(), this.muzzleWorld(), 0xff6a4a);
+  setCombat(mounts: number[], charges: number[], systems: number[], shield: number, shieldMax: number, aim: number): void {
+    this.mounts = mounts;
+    this.charges = charges;
+    this.enemySystems = systems;
+    this.shieldRatio = shieldMax > 0 ? Math.max(0, Math.min(1, shield / shieldMax)) : 0;
+    this.aim = aim;
+    this.guns.forEach((gun, index) => {
+      const level = mounts[index] ?? 0;
+      gun.setVisible(level > 0);
+      if (level > 0) gun.setTexture(`gun${level - 1}`);
+      const spot = this.hardpoints[index];
+      if (spot) gun.setPosition(spot.x, spot.y);
+    });
+  }
+
+  playFx(kind: string, amount: number, slot = 0, system = 0): void {
+    if (kind === "laser-me") this.fly(this.gunWorld(slot), this.systemWorld(system), this.mounts[slot] ?? 1, amount);
+    if (kind === "laser-them") this.bolt(this.enemyMuzzle(), this.hullWorld(), 0xff6a4a);
     if (kind === "boom") this.burst(this.hullWorld(), amount);
     if (kind === "shield") this.shield(this.hullWorld());
     if (kind === "dodge") this.floatText(this.hullWorld(), "Väistö!", "#bfe9ff");
-    if (kind === "laser-me") this.floatText(this.enemyCenter(), `−${Math.max(1, Math.round(amount))}`, "#ffe08a");
   }
 
   update(_time: number, delta: number): void {
@@ -170,16 +240,29 @@ export class ShipScene extends Phaser.Scene {
       }
       actor.root.setPosition(actor.shownX, actor.shownY);
       actor.sprite.setFlipX(target.facing < 0);
-      const anim = `${target.walking ? "walk" : "idle"}${target.color % 2 === 0 ? "0" : "1"}`;
-      actor.sprite.anims.play(anim, true);
+      const color = Math.max(0, Math.min(manifest.crew.length - 1, target.color));
+      actor.sprite.anims.play(`${target.walking ? "walk" : "idle"}${color}`, true);
     }
     this.drawHighlights();
+    this.drawGuns();
+    this.drawEnemy();
     this.placeLabel();
   }
 
   private pick(pointer: Phaser.Input.Pointer): SectionId | null {
     const local = this.ship.getLocalPoint(pointer.worldX, pointer.worldY);
     return sectionAt(local.x, local.y);
+  }
+
+  private enemyBoxAt(pointer: Phaser.Input.Pointer): number | null {
+    if (this.enemyScale < 0.05) return null;
+    const x = (pointer.worldX - this.enemy.x) / this.enemyScale;
+    const y = (pointer.worldY - this.enemy.y) / this.enemyScale;
+    for (let index = 0; index < this.boxes.length; index++) {
+      const box = this.boxes[index]!;
+      if (x >= box.x && x <= box.x + box.w && y >= box.y && y <= box.y + box.h) return index;
+    }
+    return null;
   }
 
   private layout(): void {
@@ -196,18 +279,17 @@ export class ShipScene extends Phaser.Scene {
     const [bx, by, bx2, by2] = CONTENT_BBOX;
     const bw = bx2 - bx;
     const bh = by2 - by;
-    const mobile = document.body.dataset.layout !== "desktop";
-    const shipScale = mobile
-      ? Math.min(w / bw, h / bh) * 0.98
-      : Math.min((w * 0.66) / bw, (h * 0.94) / bh);
-    this.ship.setScale(shipScale);
-    const bowX = mobile ? w * 0.5 - (bw / 2) * shipScale : w - 18 - bw * shipScale;
-    this.ship.setPosition(bowX - bx * shipScale, h / 2 - (by + bh / 2) * shipScale);
-    const gap = mobile ? 8 : 28;
-    const roomForEnemy = Math.max(40, bowX - gap);
-    this.enemyScale = Math.min((mobile ? h * 0.42 : h * 0.5) / 500, roomForEnemy / 900);
+    const gap = 10;
+    const enemyShare = w < 720 ? 0.46 : 0.4;
+    const enemyW = Math.max(48, w * enemyShare - gap);
+    this.enemyScale = Math.min(enemyW / 900, (h * 0.94) / 500);
+    const enemyH = 500 * this.enemyScale;
     this.enemy.setScale(this.enemyScale);
-    this.enemy.setPosition(Math.max(4, bowX - gap - 900 * this.enemyScale), h * (mobile ? 0.02 : 0.12));
+    this.enemy.setPosition(6, (h - enemyH) / 2);
+    const shipLeft = this.enemy.x + 900 * this.enemyScale + gap;
+    const shipScale = Math.min(Math.max(40, w - shipLeft - 8) / bw, (h * 0.96) / bh);
+    this.ship.setScale(shipScale);
+    this.ship.setPosition(shipLeft - bx * shipScale, h / 2 - (by + bh / 2) * shipScale);
   }
 
   private drawHighlights(): void {
@@ -232,9 +314,49 @@ export class ShipScene extends Phaser.Scene {
     }
   }
 
+  private drawGuns(): void {
+    const g = this.gunGfx;
+    g.clear();
+    this.hardpoints.forEach((spot, index) => {
+      if ((this.mounts[index] ?? 0) <= 0) return;
+      const charge = (this.charges[index] ?? 0) / 100;
+      g.lineStyle(4, 0xe6c36a, 0.9);
+      g.beginPath();
+      g.arc(spot.x, spot.y, 18, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * charge, false);
+      g.strokePath();
+    });
+  }
+
+  private drawEnemy(): void {
+    const g = this.enemyGfx;
+    g.clear();
+    const s = this.enemyScale;
+    const ox = this.enemy.x;
+    const oy = this.enemy.y;
+    if (this.shieldRatio > 0.02) {
+      const grow = 0.72 + 0.28 * this.shieldRatio;
+      g.lineStyle(Math.max(2, 4 * s), 0x7ec8ff, 0.25 + this.shieldRatio * 0.55);
+      g.strokeEllipse(ox + this.bubble.x * s, oy + this.bubble.y * s, this.bubble.r * 2 * s * grow, this.bubble.r * 1.35 * s * grow);
+    }
+    const showLabels = s >= 0.34;
+    this.boxes.forEach((box, index) => {
+      const hot = index === this.aim;
+      const cracked = (this.enemySystems[index] ?? 100) < 45;
+      g.lineStyle(hot ? 3 : 2, hot ? 0xe6c36a : cracked ? 0xc45a32 : 0xd7c4a0, hot ? 0.95 : 0.7);
+      g.strokeRect(ox + box.x * s, oy + box.y * s, box.w * s, box.h * s);
+      const label = this.enemyLabels[index];
+      if (!label) return;
+      label.setVisible(showLabels);
+      label.setOrigin(0.5, 0.5);
+      label.setFontSize(Math.max(12, Math.round(22 * s)));
+      label.setPosition(ox + (box.x + box.w / 2) * s, oy + (box.y + box.h / 2) * s);
+      label.setColor(hot ? "#ffe08a" : "#fff4d2");
+    });
+  }
+
   private placeLabel(): void {
     const id = this.hover ?? this.mine;
-    if (!id || this.ship.scaleX < 0.35) {
+    if (!id || this.ship.scaleX < 0.22) {
       this.label.setVisible(false);
       return;
     }
@@ -244,32 +366,41 @@ export class ShipScene extends Phaser.Scene {
     this.label.setText(s.name).setPosition(x, y).setVisible(true);
   }
 
-  private muzzleWorld(): Phaser.Math.Vector2 {
-    return new Phaser.Math.Vector2(
-      this.ship.x + MUZZLE.x * this.ship.scaleX,
-      this.ship.y + MUZZLE.y * this.ship.scaleY,
-    );
+  private gunWorld(slot: number): Phaser.Math.Vector2 {
+    const spot = this.hardpoints[slot] ?? this.hardpoints[0] ?? { x: 232, y: 330 };
+    return new Phaser.Math.Vector2(this.ship.x + spot.x * this.ship.scaleX, this.ship.y + spot.y * this.ship.scaleY);
+  }
+
+  private systemWorld(system: number): Phaser.Math.Vector2 {
+    const box = this.boxes[system] ?? this.boxes[0];
+    const x = box?.hitX ?? 460;
+    const y = box?.hitY ?? 250;
+    return new Phaser.Math.Vector2(this.enemy.x + x * this.enemyScale, this.enemy.y + y * this.enemyScale);
   }
 
   private hullWorld(): Phaser.Math.Vector2 {
-    return new Phaser.Math.Vector2(
-      this.ship.x + HULL_HIT.x * this.ship.scaleX,
-      this.ship.y + HULL_HIT.y * this.ship.scaleY,
-    );
+    return new Phaser.Math.Vector2(this.ship.x + HULL_HIT.x * this.ship.scaleX, this.ship.y + HULL_HIT.y * this.ship.scaleY);
   }
 
   private enemyMuzzle(): Phaser.Math.Vector2 {
-    return new Phaser.Math.Vector2(
-      this.enemy.x + ENEMY_MUZZLE.x * this.enemyScale,
-      this.enemy.y + ENEMY_MUZZLE.y * this.enemyScale,
-    );
+    return new Phaser.Math.Vector2(this.enemy.x + ENEMY_MUZZLE.x * this.enemyScale, this.enemy.y + ENEMY_MUZZLE.y * this.enemyScale);
   }
 
-  private enemyCenter(): Phaser.Math.Vector2 {
-    return new Phaser.Math.Vector2(
-      this.enemy.x + ENEMY_CENTER.x * this.enemyScale,
-      this.enemy.y + ENEMY_CENTER.y * this.enemyScale,
-    );
+  private fly(from: Phaser.Math.Vector2, to: Phaser.Math.Vector2, level: number, amount: number): void {
+    const img = this.add.image(from.x, from.y, "laser").setDepth(18);
+    img.setTint(level >= 3 ? 0xff9a3c : level === 2 ? 0xe6c36a : 0x9ff3ff);
+    img.setDisplaySize(36, 12);
+    this.tweens.add({
+      targets: img,
+      x: to.x,
+      y: to.y,
+      duration: 280,
+      onUpdate: () => img.setRotation(Math.atan2(to.y - img.y, to.x - img.x)),
+      onComplete: () => {
+        img.destroy();
+        this.burst(to, amount);
+      },
+    });
   }
 
   private bolt(from: Phaser.Math.Vector2, to: Phaser.Math.Vector2, tint: number): void {
@@ -283,8 +414,7 @@ export class ShipScene extends Phaser.Scene {
 
   private burst(at: Phaser.Math.Vector2, amount: number): void {
     const boom = this.add.sprite(at.x, at.y, "boom").setDepth(16);
-    const scale = Math.max(0.45, Math.min(this.ship.scaleX, 1));
-    boom.setScale(scale);
+    boom.setScale(Math.max(0.45, Math.min(this.ship.scaleX, 1)));
     boom.play("explode");
     boom.once("animationcomplete", () => boom.destroy());
     this.cameras.main.shake(160, 0.004);

@@ -52,6 +52,8 @@ export const WeaponsState = schema(
     performance: t.float32().default(0.4),
     /** Comma-separated row indexes currently flashing, empty when idle. */
     flash: t.string().default(""),
+    /** Charge 0–100 of the four hardpoints. */
+    charges: t.string().default("0,0,0,0"),
   },
   "WeaponsState",
 );
@@ -81,6 +83,31 @@ export const StationsState = schema(
 );
 export type StationsState = SchemaType<typeof StationsState>;
 
+export const RunState = schema(
+  {
+    screen: t.string().default("battle"),
+    sector: t.uint8().default(0),
+    node: t.uint16().default(0),
+    fuel: t.uint8().default(12),
+    crystals: t.uint16().default(0),
+    captain: t.string().default(""),
+    votes: t.string().default(""),
+    map: t.string().default(""),
+    reactor: t.uint8().default(1),
+    weapons: t.uint8().default(1),
+    shield: t.uint8().default(1),
+    helm: t.uint8().default(1),
+    repair: t.uint8().default(1),
+    sensors: t.uint8().default(1),
+    event: t.uint8().default(0),
+    eventDone: t.boolean().default(false),
+    /** Four hardpoints, each 0 empty or 1–3 (laser, cannon, missile). */
+    mounts: t.string().default("1,0,0,0"),
+  },
+  "RunState",
+);
+export type RunState = SchemaType<typeof RunState>;
+
 export const BattleState = schema(
   {
     phase: t.string().default("battle"),
@@ -92,6 +119,12 @@ export const BattleState = schema(
     elapsed: t.float32().default(0),
     log: t.string().default("Taistelu alkoi. Reaktori tuottaa energiaa, aseet lataavat ammuksia."),
     logSeq: t.uint16().default(1),
+    enemyShield: t.float32().default(36),
+    enemyShieldMax: t.float32().default(60),
+    /** Enemy weapons, shield, helm, reactor. */
+    enemySys: t.string().default("100,100,100,100"),
+    /** Aimed enemy system, 0–3. */
+    aim: t.uint8().default(0),
   },
   "BattleState",
 );
@@ -104,6 +137,7 @@ export const ShipState = schema(
     reactor: ReactorState,
     weapons: WeaponsState,
     stations: StationsState,
+    run: RunState,
     battle: BattleState,
     roomCode: t.string().default(""),
   },

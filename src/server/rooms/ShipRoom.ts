@@ -54,6 +54,27 @@ export class ShipRoom extends Room<{ state: ShipState }> {
     this.onMessage("restart", () => {
       this.sim.restart();
     });
+    this.onMessage("continue", () => {
+      this.sim.continueRun();
+    });
+    this.onMessage("vote", (client, message: { node?: number }) => {
+      this.sim.vote(client.sessionId, Number(message?.node));
+    });
+    this.onMessage("shop", (client, message: { action?: string }) => {
+      this.sim.shop(client.sessionId, String(message?.action ?? ""));
+    });
+    this.onMessage("event", (client, message: { choice?: number }) => {
+      this.sim.choose(client.sessionId, Number(message?.choice));
+    });
+    this.onMessage("done", () => {
+      this.sim.done();
+    });
+    this.onMessage("reopen", () => {
+      this.sim.reopen();
+    });
+    this.onMessage("aim", (client, message: { system?: number }) => {
+      this.sim.aim(client.sessionId, Number(message?.system));
+    });
     this.onMessage("debug", (client, message: { cmd?: string }) => {
       if (process.env.KOSMOS_TEST !== "1") return;
       void client;

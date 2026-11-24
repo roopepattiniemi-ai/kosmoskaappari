@@ -1,7 +1,7 @@
 export const copy = {
   title: "Kosmoskaappari",
-  tagline: "Kaksi merirosvoa. Yksi laiva. Yksi taistelu.",
-  version: "Prototyyppi v0.1",
+  tagline: "Viisi merirosvoa. Yksi runko. Yksi kierros.",
+  version: "Kierros v0.3",
   nameLabel: "Nimesi",
   namePlaceholder: "Merirosvo",
   create: "Perusta laiva",
@@ -9,7 +9,7 @@ export const copy = {
   code: "Huonekoodi",
   hop: "Hyppää kyytiin",
   connecting: "Yhdistetään laivaan…",
-  full: "Laiva on täynnä. Kyytiin mahtuu kaksi merirosvoa.",
+  full: "Laiva on täynnä. Kyytiin mahtuu viisi merirosvoa.",
   missing: "Huonetta ei löydy. Tarkista koodi tai perustä uusi laiva.",
   dropped: "Yhteys katkesi. Yhdistetään uudelleen…",
   left: "Yhteys katkesi.",

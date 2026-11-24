@@ -1,6 +1,10 @@
-# Kosmoskaappari v0.2
+# Kosmoskaappari v0.3
 
-Enintään viiden pelaajan avaruusmerirosvojen yhteispeli selaimessa. Miehistö jakaa yhden aluksen. Jokainen kuudesta asemasta on oma pulma:
+Enintään viiden pelaajan avaruusmerirosvojen yhteispeli selaimessa. Kierros on FTL-tyylinen sektorikartta: noin kolme sektoria, kussakin 6–8 solmua (taistelu, kauppa, tapahtuma, pomo). Miehistö äänestää hypyn. Polttoaine kuluu, runko ja päivitykset säilyvät, ja runko nollassa kierros päättyy.
+
+Voitoista saa kiteitä. Kaupassa korjataan runkoa, ostetaan polttoainetta ja aseita sekä päivitetään järjestelmiä tasoille 1–3. Aseet näkyvät aluksen kyljen asepaikoissa, ja taistelussa oma alus ja vihollinen ovat rinnakkain. Laukaus lähtee asepaikasta valittuun vihollisen järjestelmään. Vihollisen kilpikupla kuluu osumista.
+
+Jokainen kuudesta asemasta on oma pulma:
 
 - Reaktori: match-3, tuottaa energiaa.
 - Aseet: Tetris, lataa ja ampuu.
@@ -50,7 +54,7 @@ Sitten http://localhost:2567 — selain ja WebSocket samassa portissa. Render as
 - Aseet: nuolet, Z kääntää, alas pudottaa pehmeästi, välilyönti pudottaa pohjaan. Puhelimessa napit ovat ruudukon sivuilla.
 - Energiapalkit alareunassa. Laukaisun vahinko on rivien, ase-energian ja sensorien tulo. Ilman ase-energiaa ammukset odottavat.
 
-Puhelimessa (pysty ja vaaka) pulma on iso, alus on minikartta ja hälytykset ylhäällä. Työpöydällä alus ja vihollinen ovat isona vasemmalla.
+Puhelimessa (pysty ja vaaka) pulma on iso, alus on minikartta ja hälytykset ylhäällä. Työpöydällä alus ja vihollinen ovat rinnakkain. Aseet-asemalla kohde valitaan napeista tai napauttamalla vihollisen osastoa. Musiikki ja efektit ovat `assets/audio/`. Äänet käynnistyvät ensimmäisestä napautuksesta, ja musiikille sekä efekteille on omat liukusäätimet.
 
 ## Grafiikka
 

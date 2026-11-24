@@ -6,7 +6,7 @@ export type GameEvent =
   | { type: "reactor"; ok: true; a: number; b: number; steps: ResolveStep[] }
   | { type: "reactor"; ok: false; a: number; b: number }
   | { type: "clear"; rows: number[]; banner: string; power: number }
-  | { type: "fx"; kind: FxKind; amount: number };
+  | { type: "fx"; kind: FxKind; amount: number; slot?: number; system?: number; blocked?: number };
 
 export type TetrisCmd = "left" | "right" | "rot" | "soft" | "hard";
 export type EnergySystem = "weapons" | "shield" | "engines" | "repair" | "sensors";

@@ -7,7 +7,20 @@ export const manifest = {
   ship: "v01/alus_oma.png",
   shipMeta: "v01/alus_oma.json",
   enemy: "v01/alus_vihollinen.png",
-  crew: ["v01/merirosvo1_sheet.png", "v01/merirosvo2_sheet.png"],
+  crew: [
+    "v01/merirosvo1_sheet.png",
+    "v01/merirosvo2_sheet.png",
+    "v01/merirosvo3_sheet.png",
+    "v01/merirosvo4_sheet.png",
+    "v01/merirosvo5_sheet.png",
+  ],
+  spark: "v01/kipina.png",
+  /** Amber sweep. Rotate clockwise around the centre; the bright edge points up. */
+  radarSweep: "v01/tutka_pyyhkaisy.png",
+  radarSweepGreen: "v01/tutka_pyyhkaisy_vihrea.png",
+  /** Temporary hardpoint guns, level 1–3. Pivot is the right centre (96, 24); the barrel points left. */
+  weapons: ["v01/ase_laser.png", "v01/ase_tykki.png", "v01/ase_ohjus.png"],
+  enemyMeta: "v01/vihollinen.json",
   crystals: [1, 2, 3, 4, 5, 6].map((n) => `v01/kristalli_${n}.png`),
   /** Colour index 1–7: I O T S Z J L */
   blocks: [
@@ -47,6 +60,11 @@ export function manifestFiles(): string[] {
     manifest.shipMeta,
     manifest.enemy,
     ...manifest.crew,
+    manifest.spark,
+    manifest.radarSweep,
+    manifest.radarSweepGreen,
+    ...manifest.weapons,
+    manifest.enemyMeta,
     ...manifest.crystals,
     ...manifest.blocks,
     manifest.laser,

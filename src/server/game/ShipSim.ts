@@ -29,7 +29,20 @@ import {
   sensorLocked,
   shieldCaught,
   SHIELD_CATCH,
+  SENSOR_LOCK_RANGE,
 } from "../../shared/stations.js";
+import {
+  encodeMap,
+  eventOutcome,
+  generateMap,
+  parseMap,
+  resolveVote,
+  threat,
+  upgradeCost,
+  upgradeFactor,
+  type RunNode,
+} from "../../shared/run.js";
+import { enemyOutput, parseMounts, parseSystems, resolvePlayerImpact } from "../../shared/hardpoints.js";
 import { decodeBoard, encodeBoard, findMove, generateBoard, trySwap } from "../../shared/match3.js";
 import type { GameEvent, TetrisCmd } from "../../shared/protocol.js";
 import { mulberry32, type Rng } from "../../shared/rng.js";
@@ -90,6 +103,8 @@ export class ShipSim {
   private autoAmmoAcc = 0;
   private fireAcc = 0;
   private nagAcc = 0;
+  private charges = [0, 0, 0, 0];
+  private looted = false;
 
   constructor(
     readonly state: ShipState,
@@ -105,6 +120,7 @@ export class ShipSim {
 
   join(id: string, name: string): void {
     if (this.state.players.has(id)) return;
+    if (!this.state.run.captain) this.state.run.captain = id;
     const color = this.firstFreeColor();
     const home = HOMES[color] ?? "ohjaus";
     const spot = standPoint(home, color);
@@ -153,7 +169,7 @@ export class ShipSim {
     if ((delta !== 1 && delta !== -1) || this.state.battle.phase !== "battle") return;
     const energy = this.state.energy;
     const current = energy[system];
-    const used = energy.weapons + energy.shield + energy.engines;
+    const used = energy.weapons + energy.shield + energy.engines + energy.repair + energy.sensors;
     if (delta > 0) {
       if (used >= energy.pool || current >= SYSTEM_CAP) return;
       energy[system] = current + 1;
@@ -188,7 +204,7 @@ export class ShipSim {
     const encoded = encodeBoard(finalBoard);
     this.state.reactor.board = encoded;
     if (result.steps.length > 0) result.steps[result.steps.length - 1]!.board = encoded;
-    this.addCharge(result.gain);
+    this.addCharge(result.gain * upgradeFactor(this.sysLevel("reactor")));
     this.recentCharge += result.gain;
     this.reactorBusy = 0.2 + result.steps.length * 0.26;
     this.refreshHint();
@@ -260,7 +276,7 @@ export class ShipSim {
     this.recentLines *= Math.exp(-dt / 6);
     this.nagAcc = Math.max(0, this.nagAcc - dt);
 
-    if (!this.reactorManned()) this.addCharge(REACTOR_AUTO_CHARGE * dt);
+    if (!this.reactorManned()) this.addCharge(REACTOR_AUTO_CHARGE * dt * upgradeFactor(this.sysLevel("reactor")));
 
     events.push(...this.stepWeapons(dt));
     this.stepStations(dt);
@@ -286,6 +302,8 @@ export class ShipSim {
     energy.weapons = 2;
     energy.shield = 1;
     energy.engines = 1;
+    energy.repair = 0;
+    energy.sensors = 0;
     this.recentCharge = 0;
     this.recentLines = 0;
     this.reactorBusy = 0;
@@ -324,6 +342,7 @@ export class ShipSim {
     stations.target = Math.floor(this.rng() * 6);
     this.refreshHint();
     this.syncWeapons();
+    this.initRun();
     this.pushLog(
       announce
         ? "Uusi taistelu!"
@@ -401,12 +420,13 @@ export class ShipSim {
     const energy = this.state.energy;
     energy.charge += amount;
     let gained = 0;
-    while (energy.charge >= PIP_COST && energy.pool < MAX_PIPS) {
+    const cap = MAX_PIPS + this.sysLevel("reactor") - 1;
+    while (energy.charge >= PIP_COST && energy.pool < cap) {
       energy.charge -= PIP_COST;
       energy.pool += 1;
       gained++;
     }
-    if (energy.pool >= MAX_PIPS) energy.charge = Math.min(energy.charge, PIP_COST - 0.01);
+    if (energy.pool >= cap) energy.charge = Math.min(energy.charge, PIP_COST - 0.01);
     if (gained === 1) this.pushLog("Energiaa +1");
     else if (gained > 1) this.pushLog(`Energiaa +${gained}`);
   }
@@ -540,7 +560,8 @@ export class ShipSim {
     if (!this.at(id, "suojakilpi") || !Number.isInteger(lane)) return;
     const stations = this.state.stations;
     if (shieldCaught(stations.shieldT, lane, stations.shieldLane)) {
-      stations.shieldCharge = Math.min(100, stations.shieldCharge + SHIELD_CATCH);
+      const bonus = SHIELD_CATCH + 6 * (this.sysLevel("shield") - 1);
+      stations.shieldCharge = Math.min(100, stations.shieldCharge + bonus);
       stations.shieldT = 0;
       stations.shieldLane = Math.floor(this.rng() * 3);
       this.pushLog("Kilpi nappasi kipinän");
@@ -570,7 +591,8 @@ export class ShipSim {
       return;
     }
     const cracks = this.cracks();
-    cracks[index] = Math.min(100, (cracks[index] ?? 0) + 24);
+    const patch = 24 + 8 * (this.sysLevel("repair") - 1);
+    cracks[index] = Math.min(100, (cracks[index] ?? 0) + patch);
     this.writeCracks(cracks);
     const battle = this.state.battle;
     battle.playerHull = Math.min(battle.playerMax, battle.playerHull + 4);
@@ -582,7 +604,8 @@ export class ShipSim {
   sensorTap(id: string): void {
     if (!this.at(id, "sensorit")) return;
     const stations = this.state.stations;
-    if (!sensorLocked(stations.sweep, stations.blip)) {
+    const range = SENSOR_LOCK_RANGE + 0.15 * (this.sysLevel("sensors") - 1);
+    if (!sensorLocked(stations.sweep, stations.blip, range)) {
       this.pushLog("Taajuus hukassa");
       return;
     }
@@ -668,7 +691,8 @@ export class ShipSim {
     const stations = this.state.stations;
     const score = helmScore(stations.helmPos, stations.helmTarget);
     if (score > 0) {
-      stations.dodgeCharge = Math.min(100, stations.dodgeCharge + 16 * score);
+      const gain = 16 * score * upgradeFactor(this.sysLevel("helm"));
+      stations.dodgeCharge = Math.min(100, stations.dodgeCharge + gain);
       this.pushLog(score === 1 ? "Ruori lukossa" : "Lähellä merkkiä");
     } else {
       this.pushLog("Ruori harassa");
@@ -681,60 +705,52 @@ export class ShipSim {
     const events: GameEvent[] = [];
     const battle = this.state.battle;
     const bars = this.state.energy.weapons;
+    const mounts = this.mounts();
+    const cracks = this.cracks();
+    const room = compartmentFactor(cracks[sectionIndex("aseet")] ?? 100);
+    const rate = bars <= 0 ? 0 : Math.max(0.35, bars / 3) * upgradeFactor(this.sysLevel("weapons"), 0.2) * room;
+    for (let slot = 0; slot < 4; slot++) {
+      if ((mounts[slot] ?? 0) <= 0) this.charges[slot] = 0;
+      else this.charges[slot] = Math.min(100, (this.charges[slot] ?? 0) + dt * (100 / FIRE_INTERVAL) * rate);
+    }
     if (this.ammo.length > 0 && bars <= 0) {
       if (this.nagAcc <= 0) {
         this.pushLog("Aseissa ei ole energiaa");
         this.nagAcc = 5;
       }
     } else if (this.ammo.length > 0 && bars > 0) {
-      const factor = Math.max(0.35, bars / 3);
-      this.fireAcc += dt;
-      if (this.fireAcc >= FIRE_INTERVAL / factor) {
-        this.fireAcc = 0;
+      const slot = this.charges.findIndex((charge, index) => (mounts[index] ?? 0) > 0 && charge >= 100);
+      if (slot >= 0) {
+        this.charges[slot] = 0;
         const token = this.ammo.shift() ?? "1";
-        const fromAuto = token === "a";
-        const power = fromAuto ? 1 : Number(token) || 1;
-        const cracks = this.cracks();
-        let damage = playerShotDamage({
-          power,
-          weaponsBars: bars,
-          sensorsManned: this.manned("sensorit") || this.state.stations.weak > 0,
-          fromAuto,
-        });
-        damage *= compartmentFactor(cracks[sectionIndex("aseet")] ?? 100);
-        let weakTag = "";
-        if (!fromAuto && this.state.stations.weak > 0) {
-          damage *= 1.4;
-          this.state.stations.weak -= 1;
-          weakTag = "Heikko kohta! ";
-        }
-        battle.enemyHull = Math.max(0, battle.enemyHull - damage);
-        this.pushLog(`${weakTag}Laukaus −${Math.max(1, Math.round(damage))} viholliseen`);
-        events.push({ type: "fx", kind: "laser-me", amount: damage });
-        if (battle.enemyHull <= 0) {
-          battle.phase = "victory";
-          battle.enemyHull = 0;
-          this.pushLog("Vihollisalus upposi!");
-        }
+        events.push(...this.fireMount(slot, mounts[slot] ?? 1, token, bars));
       }
-    } else {
-      this.fireAcc = 0;
     }
+
+    const foe = parseSystems(battle.enemySys);
+    const output = enemyOutput(this.threatNow().damage, ENEMY_INTERVAL, foe);
+    battle.enemyShield = Math.min(battle.enemyShieldMax, battle.enemyShield + output.regen * dt);
 
     if (battle.phase !== "battle") return events;
     battle.enemyIn -= dt;
     let guard = 0;
     while (battle.enemyIn <= 0 && battle.phase === "battle" && guard++ < 6) {
-      battle.enemyIn += ENEMY_INTERVAL;
-      const cracks = this.cracks();
-      const shieldPower = (this.state.stations.shieldCharge / 100) * compartmentFactor(cracks[sectionIndex("suojakilpi")] ?? 100);
-      const dodgePower = (this.state.stations.dodgeCharge / 100) * compartmentFactor(cracks[sectionIndex("ohjaus")] ?? 100);
+      battle.enemyIn += output.interval;
+      const fresh = this.cracks();
+      const shieldPower = (this.state.stations.shieldCharge / 100) * compartmentFactor(fresh[sectionIndex("suojakilpi")] ?? 100);
+      const dodgePower = (this.state.stations.dodgeCharge / 100) * compartmentFactor(fresh[sectionIndex("ohjaus")] ?? 100);
+      if (output.miss > 0 && this.rng() < output.miss) {
+        this.pushLog("Vihollisen tähtäin harasi");
+        events.push({ type: "fx", kind: "dodge", amount: 0 });
+        continue;
+      }
       const shot = resolveEnemyShot({
         shieldBars: this.state.energy.shield,
         shieldManned: shieldPower >= 0.62,
         enginesBars: this.state.energy.engines,
         helmManned: dodgePower >= 0.62,
         roll: this.rng(),
+        raw: output.damage,
       });
       if (shot.dodged) {
         this.pushLog("Väistettiin!");
@@ -748,8 +764,8 @@ export class ShipSim {
       }
       battle.playerHull = Math.max(0, battle.playerHull - shot.damage);
       const hitIndex = this.state.stations.target % 6;
-      cracks[hitIndex] = Math.max(0, (cracks[hitIndex] ?? 100) - 16);
-      this.writeCracks(cracks);
+      fresh[hitIndex] = Math.max(0, (fresh[hitIndex] ?? 100) - 16);
+      this.writeCracks(fresh);
       this.state.stations.revealed = false;
       this.state.stations.target = Math.floor(this.rng() * 6);
       const roomId = (["reaktori", "aseet", "sensorit", "ohjaus", "korjaamo", "suojakilpi"] as const)[hitIndex];
@@ -764,7 +780,8 @@ export class ShipSim {
       if (battle.playerHull <= 0) {
         battle.phase = "defeat";
         battle.playerHull = 0;
-        this.pushLog("Runko petti.");
+        this.state.run.screen = "over";
+        this.pushLog("Runko petti. Kierros päättyi.");
       }
     }
     return events;
@@ -804,12 +821,306 @@ export class ShipSim {
     if (weapons.next !== next) weapons.next = next;
     const ammo = this.ammo.join("");
     if (weapons.ammo !== ammo) weapons.ammo = ammo;
+    const charges = this.charges.map((value) => String(Math.round(value))).join(",");
+    if (weapons.charges !== charges) weapons.charges = charges;
   }
 
   private pushLog(text: string): void {
     const battle = this.state.battle;
     battle.log = text;
     battle.logSeq = (battle.logSeq + 1) & 0xffff;
+  }
+
+  private sysLevel(key: "reactor" | "weapons" | "shield" | "helm" | "repair" | "sensors"): number {
+    const value = this.state.run[key];
+    return value >= 1 && value <= 3 ? value : 1;
+  }
+
+  private mounts(): number[] {
+    return parseMounts(this.state.run.mounts);
+  }
+
+  private initRun(): void {
+    const run = this.state.run;
+    const captain = run.captain;
+    const nodes = generateMap(this.rng);
+    run.map = encodeMap(nodes);
+    run.screen = "battle";
+    run.sector = 0;
+    run.node = nodes[0]?.id ?? 0;
+    run.fuel = 14;
+    run.crystals = 0;
+    run.captain = captain;
+    run.votes = "";
+    run.reactor = 1;
+    run.weapons = 1;
+    run.shield = 1;
+    run.helm = 1;
+    run.repair = 1;
+    run.sensors = 1;
+    run.mounts = "1,0,0,0";
+    run.event = 0;
+    run.eventDone = false;
+    this.charges = [0, 0, 0, 0];
+    this.looted = false;
+    const battle = this.state.battle;
+    battle.enemyShield = 36;
+    battle.enemyShieldMax = 60;
+    battle.enemySys = "100,100,100,100";
+    battle.aim = 0;
+  }
+
+  private currentNode(): RunNode | undefined {
+    return parseMap(this.state.run.map).find((node) => node.id === this.state.run.node);
+  }
+
+  private threatNow(): { hull: number; damage: number } {
+    const node = this.currentNode();
+    return threat(node?.sector ?? 0, node?.type === "boss");
+  }
+
+  private fireMount(slot: number, level: number, token: string, bars: number): GameEvent[] {
+    const battle = this.state.battle;
+    const fromAuto = token === "a";
+    const power = fromAuto ? 1 : Number(token) || 1;
+    const cracks = this.cracks();
+    let damage = playerShotDamage({
+      power,
+      weaponsBars: bars,
+      sensorsManned: this.manned("sensorit") || this.state.stations.weak > 0,
+      fromAuto,
+    });
+    damage *= compartmentFactor(cracks[sectionIndex("aseet")] ?? 100);
+    damage *= upgradeFactor(this.sysLevel("weapons"), 0.2);
+    damage *= 0.85 + 0.15 * Math.max(1, level);
+    let weakTag = "";
+    if (!fromAuto && this.state.stations.weak > 0) {
+      damage *= 1.4 + 0.15 * (this.sysLevel("sensors") - 1);
+      this.state.stations.weak -= 1;
+      weakTag = "Heikko kohta! ";
+    }
+    const impact = resolvePlayerImpact(damage, battle.enemyShield);
+    battle.enemyShield = impact.shield;
+    const systems = parseSystems(battle.enemySys);
+    const aim = battle.aim % 4;
+    systems[aim] = Math.max(0, (systems[aim] ?? 100) - impact.systemDamage);
+    battle.enemySys = systems.map((value) => String(Math.round(value))).join(",");
+    battle.enemyHull = Math.max(0, battle.enemyHull - impact.hullDamage);
+    const name = ["Aseet", "Kilpi", "Ohjaus", "Reaktori"][aim] ?? "Runko";
+    this.pushLog(`${weakTag}Laukaus ${name} −${Math.max(1, Math.round(impact.hullDamage || damage))}`);
+    const events: GameEvent[] = [
+      { type: "fx", kind: "laser-me", amount: impact.hullDamage, slot, system: aim, blocked: damage - impact.hullDamage },
+    ];
+    if (battle.enemyHull <= 0) this.finishVictory();
+    return events;
+  }
+
+  private finishVictory(): void {
+    const battle = this.state.battle;
+    const run = this.state.run;
+    battle.phase = "victory";
+    battle.enemyHull = 0;
+    const node = this.currentNode();
+    const boss = node?.type === "boss";
+    const final = boss && node?.sector === 2;
+    if (!this.looted) {
+      this.looted = true;
+      const crystals = 6 + run.sector * 4 + (boss ? 10 : 0);
+      run.crystals += crystals;
+      if (this.rng() < 0.45) run.fuel = Math.min(30, run.fuel + 1);
+    }
+    if (final) {
+      run.screen = "won";
+      this.pushLog("Kierros voitettu!");
+    } else {
+      run.screen = "loot";
+      this.pushLog(boss ? "Pomo kaatui. Saalis korjattu." : "Vihollinen kaatui. Valitkaa seuraava hyppy.");
+    }
+  }
+
+  private voteMap(): Record<string, number> {
+    const out: Record<string, number> = {};
+    if (!this.state.run.votes) return out;
+    for (const part of this.state.run.votes.split(",")) {
+      const [id, node] = part.split(":");
+      if (id) out[id] = Number(node);
+    }
+    return out;
+  }
+
+  vote(id: string, nodeId: number): void {
+    const run = this.state.run;
+    if (run.screen !== "map" || this.state.battle.phase !== "explore") return;
+    if (!this.state.players.has(id) || !Number.isInteger(nodeId)) return;
+    const map = parseMap(run.map);
+    const here = map.find((node) => node.id === run.node);
+    if (!here || !here.next.includes(nodeId)) return;
+    const votes = this.voteMap();
+    votes[id] = nodeId;
+    run.votes = Object.entries(votes)
+      .map(([key, value]) => `${key}:${value}`)
+      .join(",");
+    const ids: string[] = [];
+    this.state.players.forEach((_player, pid) => ids.push(pid));
+    const result = resolveVote(ids, votes, run.captain);
+    if (!result.ready || result.choice === null) {
+      this.pushLog("Ääni kirjattu.");
+      return;
+    }
+    if (run.fuel < 1) {
+      this.pushLog("Polttoaine loppu. Hyppy ei onnistu.");
+      return;
+    }
+    const dest = map.find((node) => node.id === result.choice);
+    if (!dest) return;
+    run.fuel -= 1;
+    this.enterNode(dest);
+  }
+
+  private enterNode(node: RunNode): void {
+    const run = this.state.run;
+    run.node = node.id;
+    run.sector = node.sector;
+    run.votes = "";
+    run.eventDone = false;
+    if (node.type === "battle" || node.type === "boss") {
+      this.startEncounter(node);
+      return;
+    }
+    this.state.battle.phase = "explore";
+    run.screen = node.type === "shop" ? "shop" : "event";
+    if (node.type === "event") run.event = Math.floor(this.rng() * 3);
+    this.pushLog(node.type === "shop" ? "Kauppa avautui." : "Tapahtuma edessä.");
+  }
+
+  private startEncounter(node: RunNode): void {
+    const power = threat(node.sector, node.type === "boss");
+    const battle = this.state.battle;
+    battle.phase = "battle";
+    battle.enemyHull = power.hull;
+    battle.enemyMax = power.hull;
+    battle.enemyIn = ENEMY_FIRST_SHOT;
+    battle.elapsed = 0;
+    battle.enemyShield = node.type === "boss" ? 70 : 36 + node.sector * 8;
+    battle.enemyShieldMax = node.type === "boss" ? 90 : 60 + node.sector * 10;
+    battle.enemySys = "100,100,100,100";
+    battle.aim = 0;
+    this.looted = false;
+    this.state.run.screen = "battle";
+    this.pushLog(node.type === "boss" ? "Pomo lähestyy!" : "Vihollinen kontaktissa.");
+  }
+
+  continueRun(): void {
+    const battle = this.state.battle;
+    const run = this.state.run;
+    if (battle.phase !== "victory" || run.screen === "won") return;
+    battle.phase = "explore";
+    run.screen = "map";
+    run.votes = "";
+    this.pushLog("Valitkaa seuraava hyppy.");
+  }
+
+  aim(id: string, system: number): void {
+    void id;
+    if (this.state.battle.phase !== "battle") return;
+    if (!Number.isInteger(system) || system < 0 || system > 3) return;
+    this.state.battle.aim = system;
+    const name = ["Aseet", "Kilpi", "Ohjaus", "Reaktori"][system] ?? "Aseet";
+    this.pushLog(`Kohde: ${name}`);
+  }
+
+  shop(id: string, action: string): void {
+    void id;
+    const run = this.state.run;
+    if (run.screen !== "shop" || this.state.battle.phase !== "explore") return;
+    if (action === "repair") {
+      if (run.crystals < 6) return this.pushLog("Kiteet eivät riitä.");
+      run.crystals -= 6;
+      const battle = this.state.battle;
+      battle.playerHull = Math.min(battle.playerMax, battle.playerHull + 12);
+      this.writeCracks(this.cracks().map((value) => Math.min(100, value + 8)));
+      this.pushLog("Runko paikattu.");
+      return;
+    }
+    if (action === "fuel") {
+      if (run.crystals < 5) return this.pushLog("Kiteet eivät riitä.");
+      run.crystals -= 5;
+      run.fuel = Math.min(30, run.fuel + 2);
+      this.pushLog("Polttoainetta +2.");
+      return;
+    }
+    if (action === "mount") {
+      const mounts = this.mounts();
+      const empty = mounts.findIndex((level) => level <= 0);
+      if (empty < 0) return this.pushLog("Asepaikat täynnä.");
+      if (run.crystals < 10) return this.pushLog("Kiteet eivät riitä.");
+      run.crystals -= 10;
+      mounts[empty] = Math.max(1, run.weapons);
+      run.mounts = mounts.join(",");
+      this.pushLog("Uusi ase asennettu.");
+      return;
+    }
+    if (action.startsWith("up:")) this.buyUpgrade(action.slice(3));
+  }
+
+  private buyUpgrade(key: string): void {
+    const run = this.state.run;
+    const current =
+      key === "reactor" ? run.reactor :
+      key === "weapons" ? run.weapons :
+      key === "shield" ? run.shield :
+      key === "helm" ? run.helm :
+      key === "repair" ? run.repair :
+      key === "sensors" ? run.sensors :
+      0;
+    if (current < 1) return;
+    if (current >= 3) return this.pushLog("Jo huipulla.");
+    const cost = upgradeCost(current + 1);
+    if (run.crystals < cost) return this.pushLog("Kiteet eivät riitä.");
+    run.crystals -= cost;
+    const next = current + 1;
+    if (key === "reactor") run.reactor = next;
+    else if (key === "weapons") {
+      run.weapons = next;
+      run.mounts = this.mounts().map((level) => (level > 0 ? next : 0)).join(",");
+    } else if (key === "shield") run.shield = next;
+    else if (key === "helm") run.helm = next;
+    else if (key === "repair") run.repair = next;
+    else if (key === "sensors") run.sensors = next;
+    this.pushLog("Järjestelmä päivitetty.");
+  }
+
+  choose(id: string, choice: number): void {
+    void id;
+    const run = this.state.run;
+    if (run.screen !== "event" || run.eventDone || (choice !== 0 && choice !== 1)) return;
+    const outcome = eventOutcome(run.event, choice, this.rng());
+    run.crystals = Math.max(0, run.crystals + outcome.crystals);
+    run.fuel = Math.max(0, Math.min(30, run.fuel + outcome.fuel));
+    const battle = this.state.battle;
+    battle.playerHull = Math.max(1, Math.min(battle.playerMax, battle.playerHull + outcome.hull));
+    if (outcome.weak > 0) this.state.stations.weak = Math.min(2, this.state.stations.weak + outcome.weak);
+    run.eventDone = true;
+    this.pushLog(outcome.log);
+  }
+
+  done(): void {
+    const run = this.state.run;
+    if (run.screen === "shop" || (run.screen === "event" && run.eventDone)) {
+      run.screen = "map";
+      run.votes = "";
+      this.state.battle.phase = "explore";
+      this.pushLog("Takaisin kartalle.");
+    }
+  }
+
+  reopen(): void {
+    const run = this.state.run;
+    if (run.screen !== "map" || this.state.battle.phase !== "explore") return;
+    const node = this.currentNode();
+    if (!node) return;
+    if (node.type === "shop") run.screen = "shop";
+    else if (node.type === "event" && !run.eventDone) run.screen = "event";
   }
 }
 

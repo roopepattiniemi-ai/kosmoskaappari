@@ -12,8 +12,8 @@
       <div class="lobby-card">
         <img class="banner" src="/assets/v01/alus_oma.png" alt="Oma alus" />
         <h1>Kosmoskaappari</h1>
-        <p class="tag">Kaksi merirosvoa. Yksi laiva. Yksi taistelu.</p>
-        <p class="version">Prototyyppi v0.1</p>
+        <p class="tag">Viisi merirosvoa. Yksi runko. Yksi kierros.</p>
+        <p class="version">Kierros v0.3</p>
         <label>Nimesi <input id="name" maxlength="16" autocomplete="nickname" placeholder="Merirosvo" /></label>
         <div class="lobby-actions">
           <button id="create" class="wood" type="button">Perusta laiva</button>
@@ -21,6 +21,11 @@
         </div>
         <label>Huonekoodi <input id="code" maxlength="12" autocapitalize="off" spellcheck="false" placeholder="esim. Ab12Cd34E" /></label>
         <p id="lobby-status" class="status" role="status"></p>
+        <div class="audio-row">
+          <label>Musiikki <input class="vol-music" type="range" min="0" max="100" value="55" /></label>
+          <label>Efektit <input class="vol-sfx" type="range" min="0" max="100" value="80" /></label>
+          <button class="wood tiny mute-btn" type="button">Mykistä</button>
+        </div>
       </div>
     </div>
 
@@ -31,7 +36,11 @@
           <div id="alert" role="status">Taistelu alkoi.</div>
           <div class="tools">
             <button id="share" class="wood tiny" type="button">Kopioi kutsu</button>
-            <button id="mute" class="wood tiny" type="button">Äänet pois</button>
+            <div class="audio-row">
+              <label>Musiikki <input class="vol-music" type="range" min="0" max="100" value="55" /></label>
+              <label>Efektit <input class="vol-sfx" type="range" min="0" max="100" value="80" /></label>
+              <button class="wood tiny mute-btn" type="button">Mykistä</button>
+            </div>
           </div>
         </div>
         <div class="hulls">
@@ -43,8 +52,10 @@
           <div class="hull enemy">
             <span>Vihollinen <b id="enemy-num">140</b></span>
             <div class="ebar" id="enemy-bar"><img class="fill" alt="" src="/assets/v01/energiapalkki_tayte.png" /><img class="frame" alt="" src="/assets/v01/energiapalkki_kehys.png" /></div>
+            <div class="ebar slim" id="bubble-bar"><img class="fill" alt="" src="/assets/v01/energiapalkki_tayte.png" /><img class="frame" alt="" src="/assets/v01/energiapalkki_kehys.png" /></div>
           </div>
         </div>
+        <p id="stash">Polttoaine 14 · Kiteet 0</p>
       </header>
 
       <div id="ship-pane">
@@ -73,6 +84,7 @@
         </div>
       </section>
 
+      <div id="run" class="hidden"></div>
       <div id="end" class="hidden">
         <div class="end-card">
           <h2 id="end-title">Voitto!</h2>

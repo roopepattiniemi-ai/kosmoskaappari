@@ -57,12 +57,19 @@ export class StationBoard {
         if (label) label.textContent = String(Math.round(cracks[index] ?? 100));
       });
     } else {
-      const sweep = Math.floor(stations.sweep) % 8;
-      root.querySelectorAll<HTMLElement>("[data-mark]").forEach((mark) => {
-        const index = Number(mark.dataset.mark);
-        mark.classList.toggle("sweep", index === sweep);
-        mark.classList.toggle("blip", index === stations.blip);
-      });
+      const sweep = root.querySelector<HTMLImageElement>("img.sweep");
+      if (sweep) {
+        sweep.style.transform = `rotate(${((stations.sweep % 8) / 8) * 360}deg)`;
+        const green = stations.revealed;
+        const next = assetUrl(green ? manifest.radarSweepGreen : manifest.radarSweep);
+        if (!sweep.src.endsWith(green ? "tutka_pyyhkaisy_vihrea.png" : "tutka_pyyhkaisy.png")) sweep.src = next;
+      }
+      const blip = root.querySelector<HTMLElement>(".blip");
+      if (blip) {
+        const angle = (stations.blip / 8) * Math.PI * 2;
+        blip.style.left = `${50 + Math.sin(angle) * 38}%`;
+        blip.style.top = `${50 - Math.cos(angle) * 38}%`;
+      }
       const note = root.querySelector(".sensor-note");
       if (note) {
         const id = SECTION_IDS[stations.target] ?? "aseet";
@@ -118,7 +125,7 @@ export class StationBoard {
       button.type = "button";
       button.className = "wood lane";
       button.dataset.lane = String(lane);
-      button.innerHTML = `<span class="spark"><img alt="" src="${assetUrl(manifest.crystals[4])}" /></span><b>${label}</b>`;
+      button.innerHTML = `<span class="spark"><img alt="" src="${assetUrl(manifest.spark)}" /></span><b>${label}</b>`;
       button.addEventListener("pointerdown", (event) => {
         event.preventDefault();
         this.tapShield(lane);
@@ -156,7 +163,7 @@ export class StationBoard {
       button.type = "button";
       button.className = "wood room-fix";
       button.dataset.room = String(index);
-      button.innerHTML = `<span>${SECTIONS[id].name}</span><b>100</b><img alt="" src="${assetUrl(manifest.crystals[0])}" />`;
+      button.innerHTML = `<span>${SECTIONS[id].name}</span><b>100</b><img alt="" src="${assetUrl(manifest.spark)}" />`;
       button.addEventListener("pointerdown", (event) => {
         event.preventDefault();
         sfx.tap();
@@ -171,12 +178,14 @@ export class StationBoard {
     const wrap = document.createElement("div");
     wrap.className = "sensor-play";
     const marks = document.createElement("div");
-    marks.className = "radar";
-    for (let mark = 0; mark < 8; mark++) {
-      const cell = document.createElement("i");
-      cell.dataset.mark = String(mark);
-      marks.append(cell);
-    }
+    marks.className = "radar-stage";
+    const sweep = document.createElement("img");
+    sweep.className = "sweep";
+    sweep.alt = "";
+    sweep.src = assetUrl(manifest.radarSweep);
+    const blip = document.createElement("i");
+    blip.className = "blip";
+    marks.append(sweep, blip);
     const note = document.createElement("p");
     note.className = "sensor-note";
     note.textContent = "Lukitse, kun pyyhkäisy osuu merkkiin";
